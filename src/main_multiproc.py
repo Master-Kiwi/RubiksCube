@@ -34,7 +34,7 @@ def worker_process(filename, q, l, conn):
   
   #-------Load Target Cube----------
   l.acquire()
-  #info("Worker-Job")
+  #info("Worker-Job")  
   Cube.load_from_file(filename)
   l.release()
   
@@ -90,15 +90,23 @@ def main():
   Cube = tRubikCube()
   
   #------load a prerotated cube-----------
-  #filename = "simple_cube_04.json"
-  #filename = "moderate_cube_08.json"
-  #filename = "complex_cube_12.json"
-  filename = "real_cube.json"
+  #filename = "../data/simple_cube_04.json"
+  #filename = "../data/moderate_cube_08.json"
+  #filename = "../data/complex_cube_12.json"
+  filename = "../data/real_cube.json"
+
+  script_dir      = os.path.dirname(__file__) #<-- absolute dir the script is in
+  cube_file_path   = os.path.join(script_dir, filename)
+  Cube.load_from_file(cube_file_path)  
+
   #progress is always stored in the same file
-  progress_filename = ("%s_progress.json" % filename)
+  progress_filename     = ("%s_progress.json" % filename)
+  progress_file_path    = os.path.join(script_dir, progress_filename)
+  
+  
   PROGRESS_SAVE_ITV = 60    #seconds
 
-  Cube.load_from_file(filename)
+  Cube.load_from_file(cube_file_path)
   Cube.print_2d()
   result = Cube.self_test()
   print("Cube Self Test Result: "+ str(result))
@@ -116,10 +124,10 @@ def main():
     print("Conjugate action sequence (solution):" + str(test_solution))
   
   #check for progress file
-  exists = os.path.isfile(progress_filename)
+  exists = os.path.isfile(progress_file_path)
   if exists:
     print("Found a Progress File: '%s'- Progress Statistics: " % progress_filename)
-    resume_iterator = tIterate(filename = progress_filename)  
+    resume_iterator = tIterate(filename = progress_file_path)  
     iter_steps    = resume_iterator.get_total_num()
     iter_step     = resume_iterator.get_step()
     print("Depth:  %03d" %resume_iterator.depth, end= "")
@@ -152,7 +160,7 @@ def main():
   parent_conn, child_conn = Pipe()
 
   #info('main-job')
-  process_list = [Process(target=worker_process, args=(filename, q, l, child_conn)) for i in range(num_process)]
+  process_list = [Process(target=worker_process, args=(cube_file_path, q, l, child_conn)) for i in range(num_process)]
   [proc.start() for proc in process_list]
   time.sleep(2)
   
@@ -244,7 +252,7 @@ def main():
           print("\nSave Progress: %s" %progress_filename, end="")
           print("  Iteration Number: %d" % save_iterator.get_step(), end="")
           print("  Timestamp: %s" % str(last_save_time))
-          save_iterator.save_to_file(progress_filename)     #save to file
+          save_iterator.save_to_file(progress_file_path)     #save to file
           
           #only the iteration step will increment, depth will increment on restart of outer-loop
           save_iterator.set_step(iter)
@@ -276,7 +284,8 @@ def main():
           test_solution.reverse()
 
           #reload the target cube from file and optional clear it's action list
-          Cube.load_from_file(filename)
+          Cube.load_from_file(cube_file_path)  
+          
           #Cube.clear_action_list()
           #apply the reverted action list on the target cube, must result in the original cube state
           for action in test_solution:
@@ -286,7 +295,9 @@ def main():
           print("\n  Solution Correct: %s" % str(Cube.equals(Orig_Cube)))
           #store the result in a solution file
           solved_filename = "%s_solution_%02d.json" % (filename, num_solutions)
-          Cube.save_to_file(solved_filename)
+          solved_cube_file_path   = os.path.join(script_dir, solved_filename)
+  
+          Cube.save_to_file(solved_cube_file_path)
 
           solutions.append(test_solution)
           print("  Solution sequence found [%02d]       :%s" % (num_solutions, str(test_solution)))

@@ -62,18 +62,16 @@ def main():
   #Cube.save_to_file("moderate_cube_08.json")
   #Cube.save_to_file("complex_cube_12.json")
 
-  
+
   #------load a prerotated cube-----------
-  #filename = "simple_cube_04.json"
-  #filename = "moderate_cube_08.json"
-  #filename = "complex_cube_12.json"
-  filename = "real_cube.json"
-  #filename = "real_cube.json_score_37_01.json"
-  #filename = "real_cube.json_score_37_02.json"
-  #filename = "real_cube.json_score_37_03.json"
-  #filename = "real_cube.json_score_37_03.json_score_38_00.json"
-  #filename = "real_cube.json_score_37_03.json_score_38_00.json_score_39_00.json"
-  Cube.load_from_file(filename)  
+  #filename = "../data/simple_cube_04.json"
+  #filename = "../data/moderate_cube_08.json"
+  #filename = "../data/complex_cube_12.json"
+  filename = "../data/real_cube.json"
+
+  script_dir        = os.path.dirname(__file__) #<-- absolute dir the script is in
+  cube_file_path    = os.path.join(script_dir, filename)
+  Cube.load_from_file(cube_file_path)  
   
 
   #Draw Starting Cube it and display some information
@@ -241,7 +239,8 @@ def main():
       if max_score > overall_best_score:
          max_score_filename = "%s_score_%02d_%02d.json" %(filename, max_score, sequence_cnt)
          print("  max_score > overall_best_score -> save this cube to file: %s" % max_score_filename) 
-         score_visu_cube.save_to_file(max_score_filename)
+         score_cube_file_path    = os.path.join(script_dir, max_score_filename)
+         score_visu_cube.save_to_file(score_cube_file_path)
          sequence_cnt += 1
     
       #print("Press enter for next sequence")

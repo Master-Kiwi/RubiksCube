@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>1a830b3c-6aea-4f75-b20e-81a88195778d</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>helpers.py</StartupFile>
+    <StartupFile>src\main.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -21,15 +21,30 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="helpers.py" />
-    <Compile Include="iterate_tools.py" />
-    <Compile Include="main.py" />
-    <Compile Include="main_multiproc.py" />
-    <Compile Include="RubiksCube.py" />
-    <Compile Include="tree_search.py" />
+    <Compile Include="src\helpers.py" />
+    <Compile Include="src\iterate_tools.py" />
+    <Compile Include="src\main.py" />
+    <Compile Include="src\main_multiproc.py" />
+    <Compile Include="src\RubiksCube.py" />
+    <Compile Include="src\tree_search.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="data\complex_cube_12.json" />
+    <Content Include="data\moderate_cube_08.json" />
+    <Content Include="data\orig_cube.json" />
+    <Content Include="data\real_cube.json" />
+    <Content Include="data\real_cube.json_progress.json" />
+    <Content Include="data\real_cube.json_score_34_00.json" />
+    <Content Include="data\simple_cube_04.json" />
+    <Content Include="doc\console_styles.png" />
+    <Content Include="doc\cube_col_array_index_map.xlsx" />
+    <Content Include="doc\Cube_Project.docx" />
     <Content Include="README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="doc\" />
+    <Folder Include="data\" />
+    <Folder Include="src\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

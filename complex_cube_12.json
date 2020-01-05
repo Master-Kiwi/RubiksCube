@@ -1,0 +1,150 @@
+{
+    "col":[
+        [
+            [
+                4,
+                0,
+                2
+            ],
+            [
+                1,
+                0,
+                2
+            ],
+            [
+                3,
+                0,
+                0
+            ]
+        ],
+        [
+            [
+                5,
+                5,
+                2
+            ],
+            [
+                1,
+                1,
+                4
+            ],
+            [
+                3,
+                1,
+                1
+            ]
+        ],
+        [
+            [
+                1,
+                4,
+                4
+            ],
+            [
+                2,
+                2,
+                4
+            ],
+            [
+                2,
+                2,
+                0
+            ]
+        ],
+        [
+            [
+                4,
+                3,
+                3
+            ],
+            [
+                3,
+                3,
+                3
+            ],
+            [
+                0,
+                5,
+                5
+            ]
+        ],
+        [
+            [
+                1,
+                0,
+                2
+            ],
+            [
+                3,
+                5,
+                5
+            ],
+            [
+                5,
+                5,
+                4
+            ]
+        ],
+        [
+            [
+                0,
+                1,
+                1
+            ],
+            [
+                0,
+                4,
+                4
+            ],
+            [
+                3,
+                2,
+                5
+            ]
+        ]
+    ],
+    "actions":[
+        3,
+        6,
+        9,
+        6,
+        10,
+        5,
+        6,
+        2,
+        8,
+        8,
+        8,
+        4
+    ],
+    "actions_dict":{
+        "0":"ROTATE TOP / CW",
+        "6":"ROTATE TOP / CCW",
+        "1":"ROTATE BOT / CW",
+        "7":"ROTATE BOT / CCW",
+        "2":"ROTATE LEFT / CW",
+        "8":"ROTATE LEFT / CCW",
+        "3":"ROTATE RIGHT / CW",
+        "9":"ROTATE RIGHT / CCW",
+        "4":"ROTATE FRONT / CW",
+        "10":"ROTATE FRONT / CCW",
+        "5":"ROTATE BACK / CW",
+        "11":"ROTATE BACK / CCW"
+    },
+    "color_dict":{
+        "0":"white",
+        "1":"yellow",
+        "2":"orange",
+        "3":"red",
+        "4":"green",
+        "5":"blue"
+    },
+    "side_dict":{
+        "0":"top",
+        "1":"bot",
+        "2":"front",
+        "3":"back",
+        "4":"left",
+        "5":"right"
+    }
+}

@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>1a830b3c-6aea-4f75-b20e-81a88195778d</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>src\main.py</StartupFile>
+    <StartupFile>src\main_multiproc.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>

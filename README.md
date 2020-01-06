@@ -1,5 +1,6 @@
 # RubiksCube
-another rubiks cube project
+another rubiks cube project :)
+
 ![Logo](doc/logo.png)
 
 ## About the Author
@@ -10,7 +11,7 @@ Special Thanks to my colleagues from company Saurab C. (data scientist) for shar
 This project was started to learn basics about machine-learning technics.
 It's initial goal is to develop a ML-agent that can solve the Classic 3x3x3 Rubik's Cube.
 This project should not be a copy-paste-modify (until it works) project that just uses code-snippets from other people, it is started from scratch with the intention to also improve python coding skills.
-To simplify the ML, this part wil not be re-written from scratch, instead it should use a ML-framework that is capable of doing the job (e.g. tensorflow)
+To simplify the ML, this part wil not be re-written from scratch, instead it should use a ML-framework that is capable of doing the job (e.g. tensorflow, openAIgym)
 
 Depending on the outcome of the project and it's hardware-requirements (memory / CPU) the code should be ported to a embedded system (Microcontroller or SBC single-board-computer like RPI) that controls motors / actuators to solve the game in the real world. There is a cube solver machine that can be built with LEGO technic EV3. Control of the lego-technic-motors  without the EV3 computer is quite simple with H-Bridge circuit. I think it won't be necessary to control the motor speed with PWM so simple ON/OF for constant time should do it 
 Search youtube if interested: https://www.youtube.com/watch?v=wilUgG3PjBw
@@ -19,19 +20,20 @@ The Cube was chosen as an easy "game" to improve python coding skills (modell th
 Python was chosen as language as it has become a quasi-standard for machine-learning tasks.
 There are reference project based on openAI Gym: https://github.com/RobinChiu/gym-Rubiks-Cube
 
-## About Reinforcment-Learning
+## About Reinforecment-Learning
 When talking about ML and learning-techniques there are basically 2 categories:
-reeinforcement learning is unsupervised-learning
 
 * supervised learning: requires a huge dataset of labeled training / validation
     typical supervised learning is done on compute-clusters of GPUs that can handle huge amount of data and train the deep-neural-networks
 	the outcome is a modell-file (.h5) that can be loaded and used for classification on a machine with less computation power
 	training can be continued with the .h5 file but typical it is no online training, sometimes batch training and then distribution of new .h5 file
-* unsupervised:  requires an environment that can be observed and scoring method
+* unsupervised learning:  requires an environment that can be observed and scoring method
     here the training is all the time. each observation will yield a score.
 	The basic idea is to let somebody play a game without explaining how to play. Just give him actions and tell them how good they were.
 	Maybe you heard about agents based on deep neural networks that can play atari games (e.g Pacman)
-	
+
+Reinforcement learning is unsupervised-learning
+
 # Development Stages
 
 ## Rubiks Cube Environment description
@@ -74,7 +76,7 @@ Search for machine-learning frameworks capable of reeinforcement learning
 this is will become necessary if the machine-learning approach fails, to finish the project :)
 
 # Actual State of Development
-The Project is in the Performance testing Phase.
+The Project is in the **Performance testing** Phase.
 Limiting factor is the rotate() method itself of the Rubiks cube, especially the part that rodates the adjacent sides. The first implementation that is found in source code used numpy to pre-rotate the sides to align them in a uniform way for the following call of <rotate_adjacent_sides()>.
 The easy solution was to introduce <rotate_simple()> that directly maps the indices in the array. This are always 12 operations for the adjacent side, 1 array rotation of the main side and with memory of 3 items.
 It could be seen that "interpreted" python code behaves different then compiled C code in computation time. Compiled C code will be optimized on compilation, depeneding on how the optimizer is set, so you can write idiomatic code (for example very long switch-case), that will be reduced to very low amount of CPU instructions. In Python when you write idiomatic for loops you will note that this is quite slower then using list-comprehension methodolgy. The result is the same, but the list comprehension is typical faster. 
@@ -92,14 +94,17 @@ The actual memory occupancy is quite low for a windows based program:
 With that numbers a distribution to embedded linux system would be possible, if all required python packages are available.
 Distributing to a microcontroller (ARM Cortex M) is not possible, they are typical limited to less then 4MB of RAM and 2MB of CODE Memory
 For that goal we need to re-write it in C language for Microcontroller. With the choosen data-structure it should be possible to represent the cube in 54Byte RAM, with potential going down to 24 bytes if we use 3 bits for color index instead of 1 byte. At that point it should be said that working on bit level with shifting instructions is typical slower then working on "word" aligned data, so better spend some more of RAM memory if you can afford it. Maybe working with nibbles of 4 Bit per color index could be a good idea on MCU system.
-Please also note that on 32Bit MCU the addition of int32 values is typical faster then the addition of int8 or int16, as int32 are aligned to 4byte boundaries, while int8 are aligned to 1 byte boundaries and first must be mapped to 4-byte boundaries.
-here you can decide between computation speed and memory requirements
+Please also note that on 32Bit MCU the addition of int32 values is typical faster then the addition of int8 or int16, as int32 are aligned to 4byte boundaries, while int8 are aligned to 1 byte boundaries and first must be mapped to 4-byte boundaries. Here you can decide between computation speed and memory requirements
+
+Maybe its possible to use MicroPython for STM32? If someone has experience please share.
 
 From my experience with tensorflow and keras introducing a deep-convolutional-neural-network (CNN) increases the memory requirement according to the NN complexity.
 With complex models this can be some 100MB's for evaluating and during training some 1000MBs according to the batch-size.
 
+I have no idea about the requirments for reinforcement learning models
+
 # How to help
-just spend some time reading the code, tell me what you think about it - what is good oder bad coded.
+just spend some time reading the code, tell me what you think about it - what is good oder bad code.
 
 If you are interested in the project or the result: Feel free to contact me, share your ideas / knowledge 
 

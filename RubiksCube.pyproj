@@ -36,9 +36,11 @@
     <Content Include="data\real_cube.json_progress.json" />
     <Content Include="data\real_cube.json_score_34_00.json" />
     <Content Include="data\simple_cube_04.json" />
+    <Content Include="doc\brute_force_performance.png" />
     <Content Include="doc\console_styles.png" />
     <Content Include="doc\cube_col_array_index_map.xlsx" />
     <Content Include="doc\Cube_Project.docx" />
+    <Content Include="doc\logo.png" />
     <Content Include="README.md" />
   </ItemGroup>
   <ItemGroup>

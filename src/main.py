@@ -132,18 +132,50 @@ def main():
     #max_score = starting_score
     score_list = []
     #score_list = [0] * 2
-    
+    skipped_iter_steps = 0
 
     #try all sequences and compare with original cube
     for iter in range(iter_steps):
       #iteration_step = seq_iterator.next()      #get next sequence
       iteration_step = next(iter_func).copy()           #using generator is faster
       iteration_step.reverse()
+ 
+                        
+
+      #check the action list for unnecessary sequences
+      #as we brute-force all combinations we can drop:
+      #  each sequence containing at least 1 action/counteraction pair as they negate each other
+      #  each sequence containing 3x same action 3 x rotate(CW) = 1 x rotate(CCW)
+      last_action = iteration_step[0]
+      action_counter = 1
+      skip_step = False
+      for i in range(1, len(iteration_step)):
+        action = iteration_step[i]
+        if action == Cube.conj_action(last_action):
+          skip_step = True
+          break
+        
+        if action == last_action:
+          action_counter += 1        
+          if action_counter == 3:
+            skip_step = True
+            break
+        else: 
+          action_counter = 1
+
+        last_action = action
+      
+      #no need to compute this sequence
+      if skip_step:
+        skipped_iter_steps += 1
+        continue
+
       #we canot use "=" as this creates a reference, each .actions call modifies the cube data
       #create a copy of the modified cube. alternative we could create a new cube (original) and try to find the solution to come to the modified state.
       #finally the 2nd solution is faster then deppcopy()
       Test = tRubikCube()
-      #Test = deepcopy(Cube)                     
+      #Test = deepcopy(Cube)  
+      
       #Perform all rotate actions, iteration_step is a list of actions, list comprehension is faster
       [Test.actions_simple(action) for action in iteration_step]
       #for action in iteration_step:
@@ -176,9 +208,9 @@ def main():
           remaining = iter_steps-iter
           time_to_completion = remaining / iter_per_sec
           if time_to_completion > 60:
-            print("\r[Progress=%.3f%%  iter_num=%dk/%dk  iter_per_sec=%05d  remaining=%.2fmin]          " % (progress, (iter/1000), (iter_steps/1000), iter_per_sec ,(time_to_completion/60) ), end='')
+            print("\r[Progress=%.3f%%  iter_num=%dk/%dk  iter_per_sec=%05d  remaining=%.2fmin  skipped=%d]          " % (progress, (iter/1000), (iter_steps/1000), iter_per_sec ,(time_to_completion/60), skipped_iter_steps ), end='')
           else:
-            print("\r[Progress=%.3f%%  iter_num=%dk/%dk  iter_per_sec=%05d  remaining=%.2fsec]          " % (progress, (iter/1000), (iter_steps/1000), iter_per_sec ,time_to_completion ), end='')
+            print("\r[Progress=%.3f%%  iter_num=%dk/%dk  iter_per_sec=%05d  remaining=%.2fsec  skipped=%d]          " % (progress, (iter/1000), (iter_steps/1000), iter_per_sec ,time_to_completion, skipped_iter_steps ), end='')
 
 
 
@@ -198,6 +230,11 @@ def main():
       print(" Iterations per seconds = %d" % int(iter_per_sec))
     else:
       print(" Iterations per seconds = <not reliable, to short>")
+
+    if iter_steps > 10000:
+      print("  Skipped Iteration Steps = %d/%dk" % (skipped_iter_steps, iter_steps))
+    else:
+      print("  Skipped Iteration Steps = %d/%d" % (skipped_iter_steps, iter_steps))
     
     
     print("Starting Cube State - Score: %02d" %starting_score)

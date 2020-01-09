@@ -19,7 +19,9 @@ import os
 import datetime
 import json
 
-from helpers import console_clear
+from helpers import console_clear, num_to_str_si
+
+
 
 
 class tIterate:
@@ -123,10 +125,18 @@ class tIterate:
     #open the file, if exists replaces all content
     with open(filename, 'w', encoding='utf-8') as outfile:
       #define data to write
+      iter_step   = self.get_step()
+      iter_steps  = self.get_total_num()
+
+      str_iteration = "%s/%s" % (num_to_str_si(iter_step), num_to_str_si(iter_steps))
+      str_progress  = "%.3f%%" % (float(iter_step / iter_steps * 100.0))
+
       outdata = {
         'depth'         : self.depth, 
         'num_actions'   : self.num_actions,
-        'step'          : self.get_step()
+        'step'          : self.get_step(),
+        'iteration'     : str_iteration,
+        'progress'      : str_progress
         }
       json.dump(outdata, outfile, separators=(',', ':'), sort_keys=False, indent=4)    
 

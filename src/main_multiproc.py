@@ -21,7 +21,8 @@ from multiprocessing import Pool, Process, Queue, Pipe, Lock
 #self written submodules
 from RubiksCube import tRubikCube
 from iterate_tools import tIterate
-from helpers import console_clear
+from helpers import console_clear, num_to_str_si, sec_to_str
+
 
 
 #worker process for bruteforce iteration
@@ -29,7 +30,7 @@ from helpers import console_clear
 #q...queue, is shared via all worker-processes
 #l...lock, if an action in the worker is not allowed to be interrupted, for example a print to the console
 #conn....pipe connection, this is a 2-way 1-1 connection, from each child to the parent. it's used only in one direction. at the parent it has only one instance (parent_conn)
-def worker_process(filename, q, l, conn):
+def worker_process(filename, q, l, conn, res_q):
   Cube = tRubikCube()
   
   #-------Load Target Cube----------
@@ -57,10 +58,52 @@ def worker_process(filename, q, l, conn):
     iter_func    = seq_iterator.generator()
      
     iter_last = 0
+    skipped_iter_steps = 0
     #print("PID: %d  Job data: %s" %(os.getpid(), str(job_data)))
     #compute iteration batch
+    last=datetime.datetime.now()     #iteration depth starting time
     for iter in range(batch_size):
       iteration_step = next(iter_func)           #using generator is faster
+      
+      last_action = iteration_step[0]
+      action_counter = 1
+      skip_step = False
+      for i in range(1, len(iteration_step)):
+        action = iteration_step[i]
+        if action == Cube.conj_action(last_action):
+          skip_step = True
+          break
+        
+        if action == last_action:
+          action_counter += 1        
+          if action_counter == 3:
+            skip_step = True
+            break
+        else: 
+          action_counter = 1
+
+        last_action = action
+      
+
+      #Notify working Progress
+      actual=datetime.datetime.now()    
+      delta = actual-last
+      delta = delta.total_seconds()
+      if delta >= 0.1:
+        job_data = [0] * 4
+        job_data[0] = int(os.getpid())
+        job_data[1] = float(100.0* iter / batch_size)
+        #job_data[2] = int(batch_size)
+        #job_data[3] = int(skipped_iter_steps)
+        res_q.put(job_data, block=True, timeout=None)   #send blocking, if queue is full it will wait until enough space free
+        last = actual
+      
+      #no need to compute this sequence
+      if skip_step:
+        skipped_iter_steps += 1
+        continue
+      
+      
       Test = tRubikCube()
       #Perform all rotate actions, iteration_step is a list of actions, list comprehension is faster
       [Test.actions_simple(action) for action in iteration_step]
@@ -70,9 +113,9 @@ def worker_process(filename, q, l, conn):
         #Solved_Cubes.append(deepcopy(Test))
         
         #notify manager process, send result, last iteration number and sequence if solution is found
-        conn.send([True, iter_start+iter, iteration_step])
+        conn.send([True, iter_start+iter, iteration_step, skipped_iter_steps])
  
-    conn.send([False, iter_start+batch_size, []])
+    conn.send([False, iter_start+batch_size, [], skipped_iter_steps])
 
   #print('Exiting worker-function')
   #conn.close()
@@ -132,7 +175,7 @@ def main():
     iter_step     = resume_iterator.get_step()
     print("Depth:  %03d" %resume_iterator.depth, end= "")
     print("  Num_Actions:  %03d" %resume_iterator.num_actions, end="")
-    print("  Iteration:  %d/%d" %(iter_step, iter_steps), end="")
+    print("  Iteration:  %s/%s" %(num_to_str_si(iter_step), num_to_str_si(iter_steps)), end="")
     print("  Progress:  %.3f%%" % float(iter_step / iter_steps * 100.0))
     
     itv_deep        = resume_iterator.depth
@@ -153,14 +196,16 @@ def main():
 
   
   #cpu-count -1 workers, 1 cpu slot left for manager
-  num_process = os.cpu_count()-1    
+  num_process = os.cpu_count()-8
+  #num_process = 1
   print("Using %d CPUs"%num_process) 
   q = Queue()
+  res_q = Queue()
   l = Lock()
   parent_conn, child_conn = Pipe()
 
   #info('main-job')
-  process_list = [Process(target=worker_process, args=(cube_file_path, q, l, child_conn)) for i in range(num_process)]
+  process_list = [Process(target=worker_process, args=(cube_file_path, q, l, child_conn, res_q)) for i in range(num_process)]
   [proc.start() for proc in process_list]
   time.sleep(2)
   
@@ -185,28 +230,24 @@ def main():
     #output info for actual Iteration Depth
     print("\nDepth:  %d" % itv_deep, end='')
     print("  Timestamp: %s" % str(start), end="")
-    if iterator_start > 100000:
-      print("  Iteration: %dk" % (iterator_start/1000), end='')
-    else:
-      print("  Iteration: %d" % iterator_start, end='')
-    if iter_steps > 100000:
-      print("/%dk" % (iter_steps/1000), end='')
-    else:
-      print("/%d" % iter_steps, end='')
-    
-    if(time_to_completion > 60): 
-      print("  Estimated Time: %.2fmin" % (time_to_completion/60.0) )
-    else:
-      print("  Estimated Time: %.2fsec" % time_to_completion )
+    print("  Iteration: %s/%s" % (num_to_str_si(iterator_start), num_to_str_si(iter_steps)), end='')
+    print("  Estimated Time: %s" % sec_to_str(time_to_completion) )
 
     
     #define initial batch size
-    batch_size = 10000
+    batch_size = 100000
     #very low number of iterations - only one batch
     if(iter_steps < batch_size):  batch_size = iter_steps    
     
 
-
+    total_queued_jobs = (iter_steps - iterator_start) / batch_size
+    print("Initial Batch: %s    Jobs: %s "% (num_to_str_si(batch_size), num_to_str_si(total_queued_jobs)))  
+    if total_queued_jobs > 1*1000*1000:
+      batch_size = int((iter_steps - iterator_start) / (1*1000*1000))
+      total_queued_jobs = (iter_steps - iterator_start) / batch_size
+      print("too much jobs, increase batch size...")
+      print("New Batch: %s    Jobs: %s "% (num_to_str_si(batch_size), num_to_str_si(total_queued_jobs)))  
+    
     #loop over all batches and queue them to the workers, count the number of queue items
     queued_jobs = 0
     for iter_start in range(iterator_start, iter_steps, batch_size):
@@ -223,22 +264,31 @@ def main():
       #send to queue, any of the workers will receive and process
       q.put(job_data, block=True, timeout=None)   #send blocking, if queue is full it will wait until enough space free
       #typical all jobs are queued immediately
+      if(queued_jobs % 10000)==0: 
+        print("\rQueued Jobs: %s/%s        " %(num_to_str_si(queued_jobs),num_to_str_si(total_queued_jobs)), end="", flush=True)
       queued_jobs += 1
-
-    print('All batches queued for this iteration (%d)... wait for completion' % queued_jobs)
+    
+    print('\nAll batches queued for this iteration (%s)... wait for completion' % num_to_str_si(queued_jobs))
     
     #Poll the RX-Pipe for answer from the worker-jobs. there must be queued_jobs answers when all batches are processed
     num_solutions=0
     last_iter = 0
+    skipped_iter_steps = 0
+    child_progress = {}
+    last_batch = datetime.datetime.now()
     #as long as answers are missing...
     while queued_jobs > 0:
-      queued_jobs -= 1                                #decrement queued_jobs
-      data_available = parent_conn.poll(timeout=None) #blocking wait for data
+
+      #data_available = parent_conn.poll(timeout=None) #blocking wait for data
+      data_available = parent_conn.poll(timeout=0.1) #blocking wait for data
       if data_available:
+
         batch_result = parent_conn.recv()   #blocking, wait for recepetion, will not block here as we checked before with poll()
-        result =          batch_result[0]   #True if solution is found
-        iter =            batch_result[1]   #last iteration number or actual iteration number if result=True
-        iteration_step =  batch_result[2]   #empt list [] or action sequence if result=True
+        queued_jobs -= 1                                #decrement queued_jobs
+        result =              batch_result[0]   #True if solution is found
+        iter =                batch_result[1]   #last iteration number or actual iteration number if result=True
+        iteration_step =      batch_result[2]   #empt list [] or action sequence if result=True
+        skipped_iter_steps += batch_result[3]   #number of skipped iterations for this batch 
 
         actual = datetime.datetime.now()
 
@@ -249,9 +299,9 @@ def main():
         #this is done to prevent from missing iterations, because multiple worker jobs deliver their results unordered
         #the jobs are ordered qued, but the answers will come unordered
         if delta_save_time > float(PROGRESS_SAVE_ITV):
-          print("\nSave Progress: %s" %progress_filename, end="")
-          print("  Iteration Number: %d" % save_iterator.get_step(), end="")
-          print("  Timestamp: %s" % str(last_save_time))
+          #print("\nSave Progress: %s" %progress_filename, end="")
+          #print("  Iteration Number: %d" % save_iterator.get_step(), end="")
+          #print("  Timestamp: %s" % str(last_save_time))
           save_iterator.save_to_file(progress_file_path)     #save to file
           
           #only the iteration step will increment, depth will increment on restart of outer-loop
@@ -261,16 +311,16 @@ def main():
         #Print Progress Indication
         actual_delta = actual-start
         actual_delta = actual_delta.total_seconds() 
-        if(actual_delta > 0.0) and (iter > last_iter):
+        #if(actual_delta > 0.0) and (iter > last_iter):
+        if(actual_delta > 0.0):
           last_iter = iter
-          iter_per_sec = iter / actual_delta
+          iter_per_sec = (iter-iterator_start) / actual_delta
           progress = 100.0*iter/iter_steps
           remaining = iter_steps-iter
           time_to_completion = remaining / iter_per_sec
-          if time_to_completion > 60:
-            print("\r[Progress=%.3f%%  iter_num=%dk/%dk  iter_per_sec=%05d  remaining=%.2fmin]          " % (progress, (iter/1000), (iter_steps/1000), iter_per_sec ,(time_to_completion/60) ), end='')
-          else:
-            print("\r[Progress=%.3f%%  iter_num=%dk/%dk  iter_per_sec=%05d  remaining=%.2fsec]          " % (progress, (iter/1000), (iter_steps/1000), iter_per_sec ,time_to_completion ), end='')
+          print("\n[Progress=%.3f%%  iter=%s/%s  iter/sec=%s  remain=%s  skip=%s  save in %s]         " % 
+                (progress, num_to_str_si(iter), num_to_str_si(iter_steps), num_to_str_si(iter_per_sec),  
+                sec_to_str(time_to_completion), num_to_str_si(skipped_iter_steps), sec_to_str(PROGRESS_SAVE_ITV-delta_save_time) ), end='\n', flush=True)
         
         #check 
         if result:
@@ -303,7 +353,35 @@ def main():
           print("  Solution sequence found [%02d]       :%s" % (num_solutions, str(test_solution)))
           #print("----!!!Solution found: %s!!!-----" % str(iteration_step))
           num_solutions+=1
-      
+      else:
+        try:
+          while True:
+            job_data = res_q.get_nowait()
+            progress = job_data[1] 
+            child_pid = job_data[0] 
+            child_progress[child_pid] = progress
+            #print(child_progress)
+            #print("Child-PID(%d) batch-Progress: %.9f       %s" % (child_pid, progress, str(child_progress)))
+        except:
+          job_data = []
+          #print("No Answer from worker Jobs")
+        
+
+
+      actual_batch = datetime.datetime.now()
+      actual_delta = actual_batch-last_batch
+      actual_delta = actual_delta.total_seconds() 
+
+      if(actual_delta > 0.1):
+        last_batch = actual_batch
+        for key in child_progress:
+          value = child_progress[key]
+          #print("%05d : %.2f\t" % (key,value), end="")
+          print("%.4f%%\t" % (value), end="")
+        print("\r", end="")
+
+  
+
 
     
     print("\n-----------Statistics for this run----------")
@@ -311,15 +389,12 @@ def main():
     stop = datetime.datetime.now()
     delta = stop-start
     delta_seconds = float(delta.total_seconds())
-    if delta_seconds > 60:
-      print(" Total time = %.2fmin" % (delta_seconds/60.0))
-    else:
-      print(" Total time = %.2fsec" % delta_seconds)
-
+    print(" Total time = %s" % sec_to_str(delta_seconds))
+    
     #iter_per_sec estimation should be correct as this is needed for runtime estimation upon start
     if delta_seconds > 0.0: 
       iter_per_sec = iter_steps / delta_seconds
-      print(" Iterations per seconds = %d" % int(iter_per_sec))
+      print(" Iterations per seconds = %s" % num_to_str_si(int(iter_per_sec)))
     else:
       print(" Iterations per seconds = <not reliable, to short>")
 

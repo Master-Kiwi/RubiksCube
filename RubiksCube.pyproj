@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>1a830b3c-6aea-4f75-b20e-81a88195778d</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>src\main_multiproc.py</StartupFile>
+    <StartupFile>src\main_bruteforce_multiproc.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -23,14 +23,16 @@
   <ItemGroup>
     <Compile Include="src\helpers.py" />
     <Compile Include="src\iterate_tools.py" />
-    <Compile Include="src\main.py" />
-    <Compile Include="src\main_multiproc.py" />
+    <Compile Include="src\main_bruteforce.py" />
+    <Compile Include="src\main_bruteforce_multiproc.py" />
     <Compile Include="src\RubiksCube.py" />
     <Compile Include="src\tree_search.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="data\complex_cube_12.json" />
+    <Content Include="data\complex_cube_12.json_progress.json" />
     <Content Include="data\moderate_cube_08.json" />
+    <Content Include="data\moderate_cube_08.json_progress.json" />
     <Content Include="data\orig_cube.json" />
     <Content Include="data\real_cube.json" />
     <Content Include="data\real_cube.json_progress.json" />
@@ -42,6 +44,7 @@
     <Content Include="doc\Cube_Project.docx" />
     <Content Include="doc\logo.png" />
     <Content Include="README.md" />
+    <Content Include="src\info.md" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="doc\" />

@@ -140,8 +140,6 @@ def main():
       iteration_step = next(iter_func).copy()           #using generator is faster
       iteration_step.reverse()
  
-                        
-
       #check the action list for unnecessary sequences
       #as we brute-force all combinations we can drop:
       #  each sequence containing at least 1 action/counteraction pair as they negate each other
@@ -162,7 +160,6 @@ def main():
             break
         else: 
           action_counter = 1
-
         last_action = action
       
       #no need to compute this sequence
@@ -201,7 +198,7 @@ def main():
         iter_last = iter
         actual = datetime.datetime.now()
         actual_delta = actual-start
-        actual_delta = actual_delta.total_seconds() #miliseconds
+        actual_delta = actual_delta.total_seconds() 
         if(actual_delta > 0.0) and (iter > 0):
           iter_per_sec = iter / actual_delta
           progress = 100.0*iter/iter_steps

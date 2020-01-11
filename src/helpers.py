@@ -73,21 +73,18 @@ def sec_to_str(sec):
   if sec <= 1.0:
     str = "%.0fms" % (sec*1000.0)
     return str
-
   str = "%.2fsec" % sec
   return str
 
 def main():
   num = 1
   sec = 0.1
-
   while True:
     num *= 5
     sec = sec + sec * 0.2
     #print("\r Number: %s      " %num_to_str_si(num), end= "")
     print("\r Time: %s      " %sec_to_str(sec))
     time.sleep(0.1)
-
   return
 
 if __name__=='__main__':

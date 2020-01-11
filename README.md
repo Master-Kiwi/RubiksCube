@@ -104,7 +104,7 @@ With complex models this can be some 100MB's for evaluating and during training 
 I have no idea about the requirments for reinforcement learning models
 
 # How to help
-just spend some time reading the code, tell me what you think about it - what is good oder bad code.
+just spend some time reading the code, tell me what you think about it - what is good or bad code.
 
 If you are interested in the project or the result: Feel free to contact me, share your ideas / knowledge 
 

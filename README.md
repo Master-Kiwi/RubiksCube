@@ -5,7 +5,7 @@ another rubiks cube project :)
 
 ## About the Author
 My Background is working in an austrian electronic design company (Microtronics Eng. / https://microtronics.com/) since 2005, starting with embedded software development in ANSI-C on ARM7 MCU, going over to electronic production / assembling / service / testing and actual in embedded hardware development (PCB design). So there is widespread knowledge about embedded systems and electronics hard- and software. 
-Special Thanks to my colleagues from company Saurab C. (data scientist) for sharing his machine-learning expertise, Markus S. (developer) sharing his python skills and always having some time for testing and also to my friends and family that had to listen to me when I was talking about the project (maybe sometimes too much).
+Special Thanks to my colleagues from company Saurabh C. (data scientist) for sharing his machine-learning expertise, Markus S. (developer) sharing his python skills and always having some time for testing and also to my friends and family that had to listen to me when I was talking about the project (maybe sometimes too much).
 
 ## Purpose
 This project was started to learn basics about machine-learning technics.
@@ -47,9 +47,10 @@ Think about data representation and keep in mind that it might be ported to a re
 
 ## Performance Testing (brute-force iteration)
 Performance testing is necessary to get an idea how much actions can be done per second, to not end up in an scenario that would need 500 CPU years
-It is already known fact the Cubes GOD-Number is 20, this means each cube can be solved in just 20 rotate actions (or less).
-There are 12 basic actions, so the total number of possible iterations for 20 consecutive actions is 12^20 = 3.83*10^21 (or written as 3.83Z (zetta - SI Prefix)) 
-That corresponds to 3.83Z sequences each containing 20 rotation actions.
+It is already known fact the Cubes GOD-Number is 20 for half-turn metrci and 26 for quarter-turn, this means each cube can be solved in just 20/26 rotate actions (or less).
+This code uses quarter-turn metrics
+There are 12 basic actions, so the total number of possible iterations for 26 consecutive actions is 12^26 = 11,44*10^27 (or written as 11440Y (tta - SI Prefix)) 
+That corresponds to 11440Y sequences each containing 26 rotation actions.
 Please note that this method is very ineffective / thumb way as there are many rotate action combinations that negotiate each other.
 What we will find out with brute-force testing is how many steps we can calculate forward in acceptable time. 
 This is a typical principle in tree-search problems on games (chess), to calculate some steps forward and then choose the optimal branch to progress, as it is not possible to calculate all possible playouts in acceptable time. 
@@ -75,6 +76,9 @@ Search for machine-learning frameworks capable of reeinforcement learning
 ## optional: implement tree-searching algorithm
 this is will become necessary if the machine-learning approach fails, to finish the project :)
 
+## optional: implement standard cube algorithm (6-step solver)
+this is will become necessary if the machine-learning approach fails, to finish the project :)
+
 # Actual State of Development
 The Project is in the **Performance testing** Phase.
 Limiting factor is the rotate() method itself of the Rubiks cube, especially the part that rodates the adjacent sides. The first implementation that is found in source code used numpy to pre-rotate the sides to align them in a uniform way for the following call of <rotate_adjacent_sides()>.
@@ -87,6 +91,13 @@ As this CPU utilization results in a high amount of electrical Power and very HO
 So it was limited to approx 20k iterations per sec.
 ![Performance](doc/brute_force_performance.png)
 
+update 12.01.2020: 
+only on brute-force with itv_deepening there is a simple way to speedup because many steps can be skipped as the action-list starts wit[0,0,0,0...]
+if it has 3*times '0' this is the same as 1 times '6' so we can skip this step, because it will not find a solution when on the depth before was no solution with sequences starting with [6]
+the other part to skip are action that counter each other for example a sequence with [0,6,...] counters each other and will not find a solution if there was no solution on depth before
+we could also skip if we have action-counter action pair with independent action between [0,1,6,...] here it reduces to [1,...]
+same is if we have alternating indepent actions that stack 3 times [0,1,0,1,0,1,...] will reduce to [6,7,...]
+but this is just a small drop in a huge sea, as the estimated time to solve depth 26 is approx 11.44*10^27 / 50k iteration/sec = * 7.25*10^15 Years *
 
 The actual memory occupancy is quite low for a windows based program:
   17.4MB for main.py

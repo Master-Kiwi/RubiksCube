@@ -1,5 +1,23 @@
-#CHANGELOG: main_multiproc.py
+#CHANGELOG: RubiksCube.py
 #AUTHOR: SL
+
+#TODO: rework scoring functions:
+#  implement methode for reading corner color []*3 and edge color []*2 from cube arrays
+#    is needed in selftest and in scoring
+#  implement new scoring based on:
+#    corner position and rotation
+#    edge position and rotation  
+#  test this new scoring
+#  implement print function to visualize edge/corner, maybe print_2d_ext() that outputs the corner / edges right beside the cube
+#optional:
+#  implement standard cube algos from traditional 6-step solution
+#  add some functions to create .png or .jpg files of cube states
+ 
+
+#12.01.2020 
+#  improved print_2d(), now also fills the boundary box with black bg
+#  class tRubikCube simplified, moved dicts / lists outside. class now carries only the .col data and action_list
+
 
 #04.01.2020 
 #improved performance on rotation
@@ -43,14 +61,12 @@
 # -various internal helper methods
 
 
-
 import os 
 import numpy as np
 import json
 import datetime
 from copy import copy, deepcopy
 import random
-
 from helpers import console_clear
 
 SIDE_IDX_TOP    = 0
@@ -67,7 +83,6 @@ COL_IDX_ORANGE  = 2
 COL_IDX_RED     = 3
 COL_IDX_GREEN   = 4
 COL_IDX_BLUE    = 5
-
 COL_IDX_BLACK   = 6
 COL_IDX_END     = 7
 
@@ -81,89 +96,78 @@ TURN_DIR_BACK_TO_TOP   = 4
 TURN_DIR_LEFT_TO_FRONT = 5    #axis = Z
 TURN_DIR_RIGHT_TO_FRONT= 6
 
-
-
-col_str_red     = '\x1b[6;30;41m'
-col_str_green   = '\x1b[6;30;42m'
-col_str_orange  = '\x1b[6;30;45m'
-col_str_yellow  = '\x1b[6;30;43m'
-col_str_blue    = '\x1b[6;30;44m'
-col_str_white   = '\x1b[6;30;47m'
-col_str_black   = '\x1b[6;30;40m' 
+#color format strings, check them using console_print_color_table() from helpers.py
+col_str_black   = '\x1b[1;37;40m'     #for test use 1;37;46m
+col_str_red     = '\x1b[1;37;41m'
+col_str_green   = '\x1b[1;37;42m'
+col_str_yellow  = '\x1b[1;37;43m'
+col_str_blue    = '\x1b[1;37;44m'
+col_str_orange  = '\x1b[1;37;45m'
+col_str_white   = '\x1b[1;37;47m'
 col_str_end     = '\x1b[0m'
 
-class tConstants:
-  pass
+#just for print2d, us a dict
+col_fmt_str = { 
+  COL_IDX_WHITE   : col_str_white,  
+  COL_IDX_YELLOW  : col_str_yellow,  
+  COL_IDX_ORANGE  : col_str_orange,  
+  COL_IDX_RED     : col_str_red,  
+  COL_IDX_GREEN   : col_str_green,  
+  COL_IDX_BLUE    : col_str_blue,    
+  COL_IDX_BLACK   : col_str_black,  
+  COL_IDX_END     : col_str_end,  
+  }
+
+
+#self.action_dict lists all possible actions, key=action_idx
+action_dict = { 
+  0: "ROTATE TOP / CW",
+  6: "ROTATE TOP / CCW",
+  1: "ROTATE BOT / CW",
+  7: "ROTATE BOT / CCW",
+  2: "ROTATE LEFT / CW",
+  8: "ROTATE LEFT / CCW",  
+  3: "ROTATE RIGHT / CW",
+  9: "ROTATE RIGHT / CCW",
+  4: "ROTATE FRONT / CW",
+  10:"ROTATE FRONT / CCW",
+  5: "ROTATE BACK / CW",
+  11:"ROTATE BACK / CCW"
+}
+#key=color index
+color_dict = {
+  COL_IDX_WHITE   : "white",
+  COL_IDX_YELLOW  : "yellow", 
+  COL_IDX_ORANGE  : "orange",
+  COL_IDX_RED     : "red",
+  COL_IDX_GREEN   : "green",
+  COL_IDX_BLUE    : "blue"
+}
+#key=side index
+side_dict = {
+  SIDE_IDX_TOP    : "top",
+  SIDE_IDX_BOT    : "bot",
+  SIDE_IDX_FRONT  : "front",
+  SIDE_IDX_BACK   : "back",
+  SIDE_IDX_LEFT   : "left",
+  SIDE_IDX_RIGHT  : "right"
+}
 
 
 class tRubikCube:
   N_DIM: int      #dimension of cube (=side len)
     
   def __init__(self):
-    #stores all actions that are performed on this object. (by index)
-    #self.action_dict lists all possible actions, key=action_idx
-    self.action_dict = { 
-      0: "ROTATE TOP / CW",
-      6: "ROTATE TOP / CCW",
-      1: "ROTATE BOT / CW",
-      7: "ROTATE BOT / CCW",
-      2: "ROTATE LEFT / CW",
-      8: "ROTATE LEFT / CCW",  
-      3: "ROTATE RIGHT / CW",
-      9: "ROTATE RIGHT / CCW",
-      4: "ROTATE FRONT / CW",
-      10:"ROTATE FRONT / CCW",
-      5: "ROTATE BACK / CW",
-      11:"ROTATE BACK / CCW"
-    }
-    #key = color index
-    self.color_dict = {
-      COL_IDX_WHITE   : "white",
-      COL_IDX_YELLOW  : "yellow", 
-      COL_IDX_ORANGE  : "orange",
-      COL_IDX_RED     : "red",
-      COL_IDX_GREEN   : "green",
-      COL_IDX_BLUE    : "blue"
-    }
-    #key=side index
-    self.side_dict = {
-      SIDE_IDX_TOP    : "top",
-      SIDE_IDX_BOT    : "bot",
-      SIDE_IDX_FRONT  : "front",
-      SIDE_IDX_BACK   : "back",
-      SIDE_IDX_LEFT   : "left",
-      SIDE_IDX_RIGHT  : "right"
-    }
-
     #actual only 3 is supported
     self.N_DIM = 3 
     
     #start with empty action list
+    #stores all actions that are performed on this object. (by index)
     self.actions_list = []
-    
-    #colors used in cube
-    self.col_idx = []
-    self.col_idx.append(COL_IDX_WHITE)
-    self.col_idx.append(COL_IDX_YELLOW)
-    self.col_idx.append(COL_IDX_ORANGE)
-    self.col_idx.append(COL_IDX_RED)
-    self.col_idx.append(COL_IDX_GREEN)
-    self.col_idx.append(COL_IDX_BLUE)
-
-    #just for print2d
-    self.col = np.zeros([6,self.N_DIM,self.N_DIM], dtype=int)
-    self.col_fmt_str = [int]*8
-    self.col_fmt_str[COL_IDX_WHITE]   = col_str_white
-    self.col_fmt_str[COL_IDX_YELLOW]  = col_str_yellow
-    self.col_fmt_str[COL_IDX_ORANGE]  = col_str_orange
-    self.col_fmt_str[COL_IDX_RED]     = col_str_red
-    self.col_fmt_str[COL_IDX_GREEN]   = col_str_green
-    self.col_fmt_str[COL_IDX_BLUE]    = col_str_blue
-    self.col_fmt_str[COL_IDX_BLACK]   = col_str_black
-    self.col_fmt_str[COL_IDX_END]     = col_str_end
-        
+   
     #set initial state of cube = solved cube
     #opposite sides
+    self.col = np.zeros([6,self.N_DIM,self.N_DIM], dtype=int)
     self.col[SIDE_IDX_TOP]    = COL_IDX_WHITE
     self.col[SIDE_IDX_BOT]    = COL_IDX_YELLOW
     self.col[SIDE_IDX_FRONT]  = COL_IDX_ORANGE
@@ -178,24 +182,34 @@ class tRubikCube:
     #self.col[SIDE_IDX_BACK][0][0]  = COL_IDX_WHITE
     #self.col[SIDE_IDX_FRONT][0][0]  = COL_IDX_WHITE
 
+  
   #for colored console output, prints <num_blocks> spaces with col_idx as background
   #looks like large colored pixels
+  #changed to read from dict
   def _print_blocks(self, col_idx, num_blocks):
-    print(self.col_fmt_str[col_idx] + (' '*num_blocks) + self.col_fmt_str[COL_IDX_END], sep='', end='')
+    print(col_fmt_str[col_idx] + (' '*num_blocks) + col_fmt_str[COL_IDX_END], sep='', end='')
 
   #print 2D view of the cube on console    
+  #it was changed due to weird color output to fill the whole cube-boundary box with black boxes
   def print_2d(self):
-    ilen = 3
+    ilen = 3  #a cube side col block has a len of 3
+    print('', end='\n')
+    self._print_blocks(COL_IDX_BLACK, ilen*17)    #fill first line
+
     for i in range (self.N_DIM):
       print('', end='\n')
       self._print_blocks(COL_IDX_BLACK, ilen*5)
       for j in range (self.N_DIM):
         self._print_blocks(self.col[SIDE_IDX_BACK][i][j], ilen)
+      self._print_blocks(COL_IDX_BLACK, ilen*9)
 
     print('', end='\n')
+    self._print_blocks(COL_IDX_BLACK, ilen*17)    #fill seperator back/top
+
     for i in range (self.N_DIM):
       print('', end='\n')
       self._print_blocks(COL_IDX_BLACK, ilen)
+
       for j in range (self.N_DIM):
         self._print_blocks(self.col[SIDE_IDX_LEFT][i][j], ilen)
       
@@ -210,19 +224,25 @@ class tRubikCube:
       self._print_blocks(COL_IDX_BLACK, ilen)
       for j in range (self.N_DIM):
         self._print_blocks(self.col[SIDE_IDX_BOT][i][j], ilen)
-  
+
+      self._print_blocks(COL_IDX_BLACK, ilen)   #fill last row
+
     print('', end='\n')
+    self._print_blocks(COL_IDX_BLACK, ilen*17)  #fill seperator top/front
+
     for i in range (self.N_DIM):
       print('', end='\n')
       self._print_blocks(COL_IDX_BLACK, ilen*5)
       for j in range (self.N_DIM):
         self._print_blocks(self.col[SIDE_IDX_FRONT][i][j], ilen)        
-
+      self._print_blocks(COL_IDX_BLACK, ilen*9)
+    
+    print('', end='\n')
+    self._print_blocks(COL_IDX_BLACK, ilen*17)  #fill last line
     print('', end='\n')
 
   
   def _rotate_side(self, side_idx, rotate_dir=ROT_DIR_CW):   
-    
     #np.rot90(<array>, 1) rotates array by 90 degrees in CCW
     #to have -90degrees we just rotate 3-times, what means a CW rotation
     #rotate_dir = True is CW rotation
@@ -893,9 +913,9 @@ class tRubikCube:
       outdata = {
         'col'     : self.col.tolist(), #np array must be converted to list
         'actions' : self.actions_list,
-        'actions_dict' : self.action_dict,
-        'color_dict'   : self.color_dict,
-        'side_dict'    : self.side_dict,
+        'actions_dict' : action_dict,
+        'color_dict'   : color_dict,
+        'side_dict'    : side_dict,
         }
       json.dump(outdata, outfile, separators=(',', ':'), sort_keys=False, indent=4)    
     return(0)
@@ -1034,6 +1054,15 @@ class tRubikCube:
     #print(edge_block)     
     #print(center_block) 
 
+    #colors used in cube
+    cube_col_idx = []
+    cube_col_idx.append(COL_IDX_WHITE)
+    cube_col_idx.append(COL_IDX_YELLOW)
+    cube_col_idx.append(COL_IDX_ORANGE)
+    cube_col_idx.append(COL_IDX_RED)
+    cube_col_idx.append(COL_IDX_GREEN)
+    cube_col_idx.append(COL_IDX_BLUE)
+        
     #check amount of colors for whole cube, must be N_DIM * N_DIM
     color_cnt_target = self.N_DIM*self.N_DIM
     color_count  = [0] * 6
@@ -1041,7 +1070,7 @@ class tRubikCube:
     #per row call .count for each color_idx
     for side in self.col:
       for row in side:
-        for col_idx in self.col_idx:
+        for col_idx in cube_col_idx:
           color_count[col_idx] = color_count[col_idx] + row.tolist().count(col_idx)   
     #print(color_count)            
     for color in color_count:

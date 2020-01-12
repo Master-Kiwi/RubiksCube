@@ -1,19 +1,20 @@
 # RubiksCube Info File for source
 
-srf folder contains main and sub .py files
+src folder contains main and sub .py files
 all main are intended to run and do their specific action
-* main_bruteforce: is searching for a solution by brute-force attack on the cube, single processing, test of the bruteforce method and the iterator
+* main_bruteforce: is searching for a solution by brute-force attack on the cube in single processing, test of the bruteforce method and the iterator
 * main_bruteforce_multiproc: is searching for a solution by brute-force attack on the cube, using multprocessing to utilize new multicore CPU
 
 main are identified by filename starting with "main_"
 all other are submodules
-each submodule has a main() method that can be used to test for their specific funtions
+each submodule has a main() method that can be used to test for their specific methods
 
 
 # Requirements
 This project is developed using *Visual Studio 2019 - Community* Edition
 Python Interpreter 3.x is required. It is developed on 3.7 and tested on 3.6
 only *numpy* is required at the moment, all other used packages are installed with the python interpreter
+Windows 10 would be good as you have colored console output
 
 # about the Console Output
 The output on the console is using ANSI ESC with CSI format strings.
@@ -21,14 +22,16 @@ you can read about that here: https://en.wikipedia.org/wiki/ANSI_escape_code#Esc
 
 ## Short description
 well known ESC-Codes are for example "\n" or "\r"  - LF (line feed) and CR (carriage reset)
-beside that there are other. Here the "\x1b" is used, this code is called ESC
+beside that there are other. Here the "\x1b" is used, this code is called ESC (dez 27 or octal 33)
 After the ESC an "[" is sent to introduce a control sequence (CSI)
-the following "6" tells that control sequence is SGR (set graphics rendition)
+after the parameters are sent setting <style>, <fg-col>, and <bg-col>
 we can stack parameters by seperating them with ";" > we can pass fg and bg color attribute in a single format string
-from the 1979 ANSI spec: '[30m = Write with black,   [40m = Set background to black (GIGI)'
-after the last parameter we terminate with "m"
-examples for used format strings (ESC+CSI+SGR)
-' col_str_black   = "\x1b[6;30;40m" '
+be aware that we can stack multiple styles (eg. bold + italic)
+therefore it would be good to reset the rendition style after formatted-string-end with "\x1b[0m" to defaults
+from the 1979 ANSI spec: '[30m = Write with black,  [40m = Set background to black (GIGI)'
+after the last parameter we terminate with "m" it tells that control sequence is SGR (set graphics rendition)
+examples for used format strings (ESC+CSI+<SGR-parameters>+"m")
+' col_str_black   = "\x1b[0;30;40m" '
 ' col_str_end     = "\x1b[0m" '
 
 
@@ -40,6 +43,7 @@ If the interpreter cannot handle it, it will look like this when 'print_2d()' is
 [6;30;40m               [0m[6;30;43m   [0m[6;30;44m   [0m[6;30;43m   [0m
 [6;30;40m               [0m[6;30;43m   [0m[6;30;41m   [0m[6;30;42m   [0m
 [6;30;40m               [0m[6;30;41m   [0m[6;30;41m   [0m[6;30;41m   [0m
+"" is the ESC, it has no ASCII character
 
 On Microsoft Systems:
 * Older then Windows 7 ansi.sys could be used for that (but has not been tested)

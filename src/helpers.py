@@ -1,5 +1,17 @@
+#CHANGELOG: helpers.py
+#AUTHOR: SL
+
+#12.01.2020 
+#  initial version
+#  implementes helper functions with main purpose to get smarter output on console
+#  TODO: 
+#    check for terminal cursormove actions to redraw more then 1 line with \r
+#    would be nice to redraw a colored cube to watch the solution progress
+
+
 import os
 import time
+import sys, platform
 
 # define our clear function for console 
 def console_clear(): 
@@ -76,7 +88,67 @@ def sec_to_str(sec):
   str = "%.2fsec" % sec
   return str
 
+#experimental, TODO: check if works on pycharm
+def console_supports_ansi():
+  if (hasattr(sys.stdout, "isatty") and sys.stdout.isatty()):
+    return True
+  else:
+    print("ANSI output disabled")
+    return False
+
+#draws the ansi-color table, if bg=fg it is invisible
+#use this if your color output looks weird
+def console_print_color_table():
+  #each line starts with ESC+CSI following the SGR Code; ESC="\x1b" is dez 27 or octal 33
+  CSI = "\x1b["
+  
+  #with this ASCII sequence the style is reset to default
+  end_str=CSI+"0m"
+  
+  #SGR Code ist style; fg; bg
+  #if we do not reset the format with end_str then multiple styles like bold and underline are stacked up
+  #not all styles are supported
+  #most basic should be style 0 or 1
+  for style in range(0,8):
+    for fg in range(30, 38):
+      for bg in range(40, 48):
+        str="%s%d;%d;%dm" % (CSI,style,fg, bg)
+        print("%s %s %s"  %(str, str[2:], end_str) , end = "")
+      print("")
+    print("")
+
+#STYLES:
+#0	Reset / Normal	all attributes off
+#1	Bold or increased intensity	
+#2	Faint (decreased intensity)	
+#3	Italic	Not widely supported. Sometimes treated as inverse.
+#4	Underline	
+#5	Slow Blink	less than 150 per minute
+#6	Rapid Blink	MS-DOS ANSI.SYS; 150+ per minute; not widely supported
+#7	Reverse video	swap foreground and background colors
+  
+#replace this strings in RubiksCube.py 
+  #col_str_black   = '\x1b[1;37;40m' 
+  #col_str_red     = '\x1b[1;37;41m'
+  #col_str_green   = '\x1b[1;37;42m'
+  #col_str_yellow  = '\x1b[1;37;43m'
+  #col_str_blue    = '\x1b[1;37;44m'
+  #col_str_orange  = '\x1b[1;37;45m'
+  #col_str_white   = '\x1b[1;37;47m'
+  #col_str_end     = '\x1b[0m'
+  
+
 def main():
+  if console_supports_ansi():
+    print("Console supporting ANSI")
+  else:
+    print("ANSI output disabled")
+
+  os.system('color') 
+  console_print_color_table()
+  print("Press Any Key to continue")
+  input()
+
   num = 1
   sec = 0.1
   while True:
@@ -86,6 +158,8 @@ def main():
     print("\r Time: %s      " %sec_to_str(sec))
     time.sleep(0.1)
   return
+
+
 
 if __name__=='__main__':
   main()

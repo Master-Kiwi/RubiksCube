@@ -1,5 +1,12 @@
-#CHANGELOG: main.py
+#CHANGELOG: main_bruteforce.py
 #AUTHOR: SL
+
+#12.01.2020 
+#  changed name to: "main_bruteforce.py"
+#  improved visualization using helper functions requires helpers.py from 12.01.2020
+#  implemented resume from progress file
+#  changed outer loop condition to search infinite until solution found
+
 
 #04.01.2020 
 #introduced scoring, requires RubiksCube.py from 04.01.2020
@@ -39,7 +46,7 @@ from copy import copy, deepcopy
 #self written submodules
 from RubiksCube import tRubikCube
 from iterate_tools import tIterate
-from helpers import console_clear
+from helpers import console_clear, num_to_str_si, sec_to_str
 
 
 
@@ -65,13 +72,17 @@ def main():
 
   #------load a prerotated cube-----------
   #filename = "../data/simple_cube_04.json"
-  #filename = "../data/moderate_cube_08.json"
+  filename = "../data/moderate_cube_08.json"
   #filename = "../data/complex_cube_12.json"
-  filename = "../data/real_cube.json"
+  #filename = "../data/real_cube.json"
 
   script_dir        = os.path.dirname(__file__) #<-- absolute dir the script is in
   cube_file_path    = os.path.join(script_dir, filename)
   Cube.load_from_file(cube_file_path)  
+
+  #progress is always stored in the same file
+  progress_filename     = ("%s_progress.json" % filename)
+  progress_file_path    = os.path.join(script_dir, progress_filename)
   
 
   #Draw Starting Cube it and display some information
@@ -95,8 +106,32 @@ def main():
     test_solution.reverse()
     print("Conjugate action sequence (solution):" + str(test_solution))
   
-  num_rotations = 7  
-  print("Search Solution with Iterative Deepening, depth=%d\n" % num_rotations)
+  #check for progress file
+  exists = os.path.isfile(progress_file_path)
+  #exists = False
+  if exists:
+    print("Found a Progress File: '%s'- Progress Statistics: " % progress_filename)
+    resume_iterator = tIterate(filename = progress_file_path)  
+    iter_steps    = resume_iterator.get_total_num()
+    iter_step     = resume_iterator.get_step()
+    print("Depth:  %03d" %resume_iterator.depth, end= "")
+    print("  Num_Actions:  %03d" %resume_iterator.num_actions, end="")
+    print("  Iteration:  %s/%s" %(num_to_str_si(iter_step), num_to_str_si(iter_steps)), end="")
+    print("  Progress:  %.3f%%" % float(iter_step / iter_steps * 100.0))
+    
+    itv_deep        = resume_iterator.depth
+    num_actions     = resume_iterator.num_actions 
+    iterator_start  = iter_step
+
+  else:
+    print("No Progress File, start from beginning")
+    itv_deep        = 1
+    num_actions     = 12
+    iterator_start  = 0
+
+
+
+  print("Search Solution with Iterative Deepening, depth=%d\n" % itv_deep)
   print("Press Enter to continue")
   input()
   console_clear()
@@ -106,27 +141,22 @@ def main():
   iter_per_sec = 2000 #approx
   overall_best_score = starting_score
 
-  #increment the depth iterative up to num_rotations
-  for itv_deep in range(1, num_rotations+1):
+  #increment the depth iterative until solution found
+  while True:
     if Solved_Cubes: break    #solution found on last depth --> break
-    seq_iterator = tIterate(itv_deep, 12, 0)
+    seq_iterator = tIterate(itv_deep, 12, iterator_start)
     iter_steps   = seq_iterator.get_total_num()
     iter_func    = seq_iterator.generator()
-    
     time_to_completion = float(iter_steps / iter_per_sec)
-    print("\nIteration Depth:  %d" % itv_deep, end='')
-    if iter_steps > 10000:
-      print("  Num_Iterations:   %dk" % (iter_steps/1000), end='')
-    else:
-      print("  Num_Iterations:   %d" % iter_steps, end='')
-    
-    if(time_to_completion > 60): 
-      print("  Estimated Time:   %.2fmin" % (time_to_completion/60.0) )
-    else:
-      print("  Estimated Time:   %.2fsec" % time_to_completion )
-    #print("  Initial Iter:   "+str(Orig_Cube.next_iteration()))
-    
     start = datetime.datetime.now()
+
+   #output info for actual Iteration Depth
+    print("\nDepth:  %d" % itv_deep, end='')
+    print("  Timestamp: %s" % str(start), end="")
+    print("  Iteration: %s/%s" % (num_to_str_si(iterator_start), num_to_str_si(iter_steps)), end='')
+    print("  Estimated Time: %s" % sec_to_str(time_to_completion) )
+   
+    
     iter_last = 0
     max_score = -1
     #max_score = starting_score
@@ -167,31 +197,31 @@ def main():
         skipped_iter_steps += 1
         continue
 
-      #we canot use "=" as this creates a reference, each .actions call modifies the cube data
+      #we canot use "Test=Cube" as this creates a reference, each Test.actions call also modifies the Cube.col data
       #create a copy of the modified cube. alternative we could create a new cube (original) and try to find the solution to come to the modified state.
       #finally the 2nd solution is faster then deppcopy()
-      Test = tRubikCube()
       #Test = deepcopy(Cube)  
+      Test = tRubikCube()
+
       
       #Perform all rotate actions, iteration_step is a list of actions, list comprehension is faster
       [Test.actions_simple(action) for action in iteration_step]
-      #for action in iteration_step:
-        #Test.actions(action)    #rotate the cube 
+
       #check for match with target, we need to do this only after the rotation is complete, as we checked all other variants before
       score = Test.compare(Cube)
       if score >= max_score: 
         max_score=score
         new_entry = [score, iteration_step.copy()]
         score_list.append(new_entry)
-        
-
 
       if Test.equals(Cube): 
         print("\n----!!!Solution found: %s!!!-----" % str(iteration_step))
         Solved_Cubes.append(deepcopy(Test))
+
       #subtraction is faster then modulo operation, adapt to CPU-speed or use modulo, will be true approx each second, will not ouput on fast runs, module will fire on start
       #combine modulo and estimated iter_per_sec, this will be true approx each second or each % of completion
       itercnt = iter-iter_last
+
       #if (itercnt >= iter_per_sec):  
       #if (itercnt >= iter_per_sec) or (iter % (int(iter_steps/100)+1) == 0):  
       if (itercnt >= iter_per_sec) or not (iter % (int(iter_steps/100)+1)):  
@@ -204,11 +234,10 @@ def main():
           progress = 100.0*iter/iter_steps
           remaining = iter_steps-iter
           time_to_completion = remaining / iter_per_sec
-          if time_to_completion > 60:
-            print("\r[Progress=%.3f%%  iter_num=%dk/%dk  iter_per_sec=%05d  remaining=%.2fmin  skipped=%d]          " % (progress, (iter/1000), (iter_steps/1000), iter_per_sec ,(time_to_completion/60), skipped_iter_steps ), end='')
-          else:
-            print("\r[Progress=%.3f%%  iter_num=%dk/%dk  iter_per_sec=%05d  remaining=%.2fsec  skipped=%d]          " % (progress, (iter/1000), (iter_steps/1000), iter_per_sec ,time_to_completion, skipped_iter_steps ), end='')
-
+          print("\r[Progress=%.3f%%  iter=%s/%s  iter/sec=%s  remain=%s  skip=%s ]         " % 
+                (progress, num_to_str_si(iter), num_to_str_si(iter_steps), num_to_str_si(iter_per_sec),  
+                sec_to_str(time_to_completion), num_to_str_si(skipped_iter_steps)  ), 
+                end='', flush=True)
 
 
     print("\n-----------Statistics for this run----------")
@@ -216,22 +245,16 @@ def main():
     stop = datetime.datetime.now()
     delta = stop-start
     delta_seconds = float(delta.total_seconds())
-    if delta_seconds > 60:
-      print(" Total time = %.2fmin" % (delta_seconds/60.0))
-    else:
-      print(" Total time = %.2fsec" % delta_seconds)
+    print(" Total time = %s" % sec_to_str(delta_seconds))
 
     #iter_per_sec estimation should be correct as this is needed for runtime estimation upon start
     if delta_seconds > 0.0: 
       iter_per_sec = iter_steps / delta_seconds
-      print(" Iterations per seconds = %d" % int(iter_per_sec))
+      print(" Iterations per seconds = %s" % num_to_str_si(int(iter_per_sec)))
     else:
       print(" Iterations per seconds = <not reliable, to short>")
 
-    if iter_steps > 10000:
-      print("  Skipped Iteration Steps = %d/%dk" % (skipped_iter_steps, iter_steps))
-    else:
-      print("  Skipped Iteration Steps = %d/%d" % (skipped_iter_steps, iter_steps))
+    print("  Skipped Iteration Steps = %s/%s" % (num_to_str_si(skipped_iter_steps), num_to_str_si(iter_steps)))
     
     
     print("Starting Cube State - Score: %02d" %starting_score)
@@ -293,6 +316,18 @@ def main():
     input()
     console_clear()
     
+    #last action is to set iterator conditions for next run
+    itv_deep        += 1
+    iterator_start  = 0       #if we resumed from a file then iter_start is not zero.
+    
+    #on completion of this run we reset the progress file
+    #save_iterator   = tIterate(itv_deep, num_actions, iterator_start)
+    #save_iterator.save_to_file(progress_file_path)     #save on each startup - means on each co
+
+
+
+#at this point the loop break condition is reached, this means there is a solution
+    
   #we found solutions - output all of them
   if Solved_Cubes:
     print("\n-------------SOLUTIONS FOUND----------------")
@@ -308,6 +343,9 @@ def main():
       test_solution.reverse()
       print("  Solution sequence found [%02d]       :%s" % (i, str(test_solution)))
       i += 1
+
+
+
   
 
 if __name__=="__main__":

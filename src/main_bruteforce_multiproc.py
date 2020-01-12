@@ -1,6 +1,37 @@
 #CHANGELOG: main_multiproc.py
 #AUTHOR: SL
 
+#12.01.2020 
+#  changed name to: "main_bruteforce_multiproc.py"
+#  improved visualization using helper functions requires helpers.py from 12.01.2020
+#  major changes to job-dispatching
+#   there was a bug with dispatching implemented before, as all jobs have been queued at the beginning.
+#   with high number of jobs like on depth > 12 it caused some GB of RAM allocated
+#  it was changed in a way that only up to  target_jobs = num_process * 100  can be queued
+#  when this queue is full or no further jobs are available then we wait for responses from the worker pool
+#  each response decrements jobs_to_complete number --> jobs_to_complete = 0 is indication for all batches have been computed
+#  if we do not get a response within a timeout it means that alle workers are still busy or all workers have completed.
+#  so on timeout we start dispatching again
+#  it could be seen that there is a variation in worker_jobs computation time, especicially at the start there are many iterations thtat are skipped
+#    this lead to a case where the responses come that fast that timeout occurs first when actual_jobs = 0
+#    therefore target_jobs is a relative high number to quarantee a good CPU utilization in the case when.
+#    it is hard to find a solution fitting vor variation of CPU-speed and CPU-cores
+#    on weird computation times change the batch_size (lower batch size will give you faster responses) or change the timeout to wait for responses
+#   there is a benchmark function running at beginning that estimates your system performance, you can use that number as an indicator for batch_size
+
+#this is source code for the section where responses are waited for
+  #poll until all jobs done 
+  #while jobs_to_complete > 0:
+  #  data_available = parent_conn.poll(timeout=0.2) #wait for data with timeout
+  #  #on timeout break, timeout occurs if queue gets empty or all worker jobs are computing a batch and have not completed within timeout
+  #  if data_available == False:
+  #    break
+  #  else:
+  #    ....
+
+    
+
+
 #04.01.2020 
 # first version
 #   use multiprocessing to search for Rubiks Cube solution
@@ -254,7 +285,8 @@ def main():
     last_iter = 0
     skipped_iter_steps = 0
 
-    while iter_start < total_iter_steps:
+    #as long as there are jobs pending
+    while jobs_to_complete > 0:
       #dispatch jobs to saturate workers, do not dispatch too much as this will waste memory
       #dispatch a multiple of processes
       #print("Dispatching Jobs start...")
@@ -282,10 +314,8 @@ def main():
 
       #poll until all jobs done 
       while jobs_to_complete > 0:
-        #data_available = parent_conn.poll(timeout=None) #blocking wait for data
         data_available = parent_conn.poll(timeout=0.2) #wait for data with timeout
         #print("\nTotal Jobs to complete: %d,    Actual Jobs in queue: %d" % (jobs_to_complete, actual_queued_jobs))
-
         #on timeout break, timeout occurs if queue gets empty or all worker jobs are computing a batch nad do not complete within timeout
         if data_available == False:
           break
@@ -423,39 +453,39 @@ def benchmark(itv_deep, batch_size):
   Cube = tRubikCube()
   skipped_iter_steps = 0
   
-  print(" <Single-Core-Benchmarking> Start with %s iterations @ depth %d" %(num_to_str_si(batch_size), itv_deep))
+  print(" <Single-Core-Benchmarking> Start at %s with %s iterations @ depth %d" %(num_to_str_si(rand_start), num_to_str_si(batch_size), itv_deep))
   
   start = datetime.datetime.now()     #iteration  starting time
   #compute iteration batch
   for iter in range(batch_size):
-  
-    
-
     iteration_step = next(iter_func)           #using generator is faster
 
-    #check for unnecessary actions
-    last_action = iteration_step[0]
-    action_counter = 1
-    skip_step = False
-    for i in range(1, len(iteration_step)):
-      action = iteration_step[i]
-      if action == Cube.conj_action(last_action):
-        skip_step = True
-        break
+    #ignore the skipped section, as they compute way faster and it will give unreliable result on high depths
+    #  with approx 100M skipped iters at once
+
+    ##check for unnecessary actions
+    #last_action = iteration_step[0]
+    #action_counter = 1
+    #skip_step = False
+    #for i in range(1, len(iteration_step)):
+    #  action = iteration_step[i]
+    #  if action == Cube.conj_action(last_action):
+    #    skip_step = True
+    #    break
         
-      if action == last_action:
-        action_counter += 1        
-        if action_counter == 3:
-          skip_step = True
-          break
-      else: 
-        action_counter = 1
-      last_action = action
+    #  if action == last_action:
+    #    action_counter += 1        
+    #    if action_counter == 3:
+    #      skip_step = True
+    #      break
+    #  else: 
+    #    action_counter = 1
+    #  last_action = action
       
-    #no need to compute this sequence
-    if skip_step:
-      skipped_iter_steps += 1
-      continue
+    ##no need to compute this sequence
+    #if skip_step:
+    #  skipped_iter_steps += 1
+    #  continue
 
     Test = tRubikCube()
     #Perform all rotate actions, iteration_step is a list of actions, list comprehension is faster

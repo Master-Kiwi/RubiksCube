@@ -21,18 +21,25 @@ Python was chosen as language as it has become a quasi-standard for machine-lear
 There are reference project based on openAI Gym: https://github.com/RobinChiu/gym-Rubiks-Cube
 
 ## About Reinforecment-Learning
-When talking about ML and learning-techniques there are basically 2 categories:
+When talking about ML and learning-techniques there are basically 2 classic categories and reinforcement learning:
 
-* supervised learning: requires a huge dataset of labeled training / validation
-    typical supervised learning is done on compute-clusters of GPUs that can handle huge amount of data and train the deep-neural-networks
+* supervised learning: requires a huge dataset of LABELED training / validation
+	correlation of data and labels are learned by comparing the prediction to the label and minimizing the loss. (typical by gradient descent)
+    supervised learning is done on compute-clusters of GPUs that can handle huge amount of data and train the deep-neural-networks
 	the outcome is a modell-file (.h5) that can be loaded and used for classification on a machine with less computation power
 	training can be continued with the .h5 file but typical it is no online training, sometimes batch training and then distribution of new .h5 file
-* unsupervised learning:  requires an environment that can be observed and scoring method
-    here the training is all the time. each observation will yield a score.
+	This is very popular with Computer-Vision, using pretrained models (COCO, SSD, MOBILENET,..) and exchange the output layer to your needs will give good accuracy.
+* unsupervised learning: 
+	it can look for similarity in data, can therefore do anomaly or outlier detection.
+	is typical used for classification / clustering of unlabeled data
+	typical lacks in accuracy compared to supervised learning
+* Reinforcement learning:  requires an environment that can be observed and scoring/reward method
+    Th RL-agent is choosing an action based on his "experience/policy". The agent itself is a neural Network, that has been trained on the environment.
 	The basic idea is to let somebody play a game without explaining how to play. Just give him actions and tell them how good they were.
 	Maybe you heard about agents based on deep neural networks that can play atari games (e.g Pacman)
+	The difficult comes here with delayed rewards for example plant a tree to get the fruit (=reward) in future.
 
-Reinforcement learning is unsupervised-learning
+ 
 
 # Development Stages
 

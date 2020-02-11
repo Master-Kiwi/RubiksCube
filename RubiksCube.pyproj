@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>1a830b3c-6aea-4f75-b20e-81a88195778d</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>src\main_bruteforce_multiproc.py</StartupFile>
+    <StartupFile>src\main_classic_solver.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -21,10 +21,21 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="src\gym-cube\gym_cube\envs\cube_env.py" />
+    <Compile Include="src\gym-cube\gym_cube\envs\cube_extrahard_env.py" />
+    <Compile Include="src\gym-cube\gym_cube\envs\__init__.py" />
+    <Compile Include="src\gym-cube\gym_cube\__init__.py" />
+    <Compile Include="src\gym-cube\setup.py" />
     <Compile Include="src\helpers.py" />
     <Compile Include="src\iterate_tools.py" />
     <Compile Include="src\main_bruteforce.py" />
     <Compile Include="src\main_bruteforce_multiproc.py" />
+    <Compile Include="src\main_tf_test.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="src\main_classic_solver.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="src\RubiksCube.py" />
     <Compile Include="src\tree_search.py" />
   </ItemGroup>
@@ -50,6 +61,9 @@
     <Folder Include="doc\" />
     <Folder Include="data\" />
     <Folder Include="src\" />
+    <Folder Include="src\gym-cube\" />
+    <Folder Include="src\gym-cube\gym_cube\" />
+    <Folder Include="src\gym-cube\gym_cube\envs\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

@@ -8,10 +8,33 @@
 #    corner position and rotation
 #    edge position and rotation  
 #  test this new scoring
-#  implement print function to visualize edge/corner, maybe print_2d_ext() that outputs the corner / edges right beside the cube
+#  unify algo methods, maybe create a dict for all algos and use a single method to call
+#     move algos to new file "Rubiks_Cube_algos.py"?
+#  add method for printing sequences in letters instead of numbers (R / R')
+#  print letter sequence also to file additional to numbers
+#  unify notation, change TOP/BOT to UP/DOWN. this is common notation on internet and also less sensitive to errors
+#     actions-shortcuts are in this case UNIQUE single letters with this notation
+#     BOT/BACK > new notation: D(down) / B(back)
+#  add metrics (actual is quarter-turn), add half-turn (maybe decide with constructor what metric to use)
+
 #optional:
-#  implement standard cube algos from traditional 6-step solution
 #  add some functions to create .png or .jpg files of cube states
+
+#11.02.2020 
+#  solved: "implement print function to visualize edge/corner, maybe print_2d_ext() that outputs the corner / edges right beside the cube" from TODO
+#  solved: "implement standard cube algos from traditional 6-step solution" from TODO
+#   -rot_white_edge()
+#   -rot_white_corner()
+#   ....
+#  updated: self_test() to work with new corner/edge/center methods
+#  updated: actions_simple() - removed many dead code
+#  added: new methods to tRubikCube Class:
+#   -get_corner(location=None, sort=False)          return the color value of specific or all corner-blocks [i,j,k]
+#   -get_edge(location=None, sort=False)            return the color value of specific or all edge-blocks [i,j]
+#   -get_center(location=None):                     return the color value of specific or all center-blocks
+#   -search_corner(edge_to_search = num or list):   return the position(s) of corner(s) - search by value, will ignore rotation
+#   -search_edge(edge_to_search = num or list):     return the position(s) of edge(s)   - search by value, will ignore rotation
+
  
 
 #12.01.2020 
@@ -21,7 +44,7 @@
 
 #04.01.2020 
 #improved performance on rotation
-#added methods to tRubikCube Classe:
+#added methods to tRubikCube Class:
 # -rotate_simple:   simple version of rotate() with direct modification of self.col array instead of numpy operations
 # -actions_simple:  simple version of actions()
 # -score:           simple scoring to get a numeric value hiw "finished" the cube is compared to the original-state
@@ -97,7 +120,8 @@ TURN_DIR_LEFT_TO_FRONT = 5    #axis = Z
 TURN_DIR_RIGHT_TO_FRONT= 6
 
 #color format strings, check them using console_print_color_table() from helpers.py
-col_str_black   = '\x1b[1;37;40m'     #for test use 1;37;46m
+#col_str_black   = '\x1b[1;37;40m'     #for test use 1;37;46m
+col_str_black   = '\x1b[1;37;46m'     #for test use 1;37;46m
 col_str_red     = '\x1b[1;37;41m'
 col_str_green   = '\x1b[1;37;42m'
 col_str_yellow  = '\x1b[1;37;43m'
@@ -183,28 +207,59 @@ class tRubikCube:
     #self.col[SIDE_IDX_FRONT][0][0]  = COL_IDX_WHITE
 
   
-  #for colored console output, prints <num_blocks> spaces with col_idx as background
+  #for colored console output, prints <num_blocks> spaces with col_idx as fg/bg/style
   #looks like large colored pixels
   #changed to read from dict
   def _print_blocks(self, col_idx, num_blocks):
     print(col_fmt_str[col_idx] + (' '*num_blocks) + col_fmt_str[COL_IDX_END], sep='', end='')
-
+  #for colored console output, prints text spaces with col_idx as fg/bg
+  #pay attention that fg color is set correct in the col_idx strings
+  def _print_col_text(self, col_idx, col_text):
+    print(col_fmt_str[col_idx] + col_text + col_fmt_str[COL_IDX_END], sep='', end='')
+  
+  #print additional information edges and colors, called from print_2d() only, but may be called individually
+  def _print_ext_info(self, edge_block, corner_block, num):
+    ilen = 3  #a cube side col block has a len of 3
+    self._print_col_text(COL_IDX_BLACK, "e%02d  " % num)
+    self._print_blocks(edge_block[0],ilen)
+    self._print_blocks(edge_block[1],ilen)
+    self._print_blocks(COL_IDX_BLACK,ilen*4)
+    
+    if not corner_block:
+      self._print_col_text(COL_IDX_BLACK, " " * (5+ilen*4))
+    else:
+      #corner
+      self._print_col_text(COL_IDX_BLACK, "c%02d  " % num)
+      self._print_blocks(corner_block[0], ilen)
+      self._print_blocks(corner_block[1], ilen)
+      self._print_blocks(corner_block[2], ilen)
+      self._print_blocks(COL_IDX_BLACK,ilen)
+      
   #print 2D view of the cube on console    
   #it was changed due to weird color output to fill the whole cube-boundary box with black boxes
+  #additional information added, edges and colors, mapping according to cube_col_array_index_map.xlsx
   def print_2d(self):
+
+    edge_block = self.get_edge()
+    #center_block = self.get_center()
+    corner_block = self.get_corner()
+
     ilen = 3  #a cube side col block has a len of 3
     print('', end='\n')
-    self._print_blocks(COL_IDX_BLACK, ilen*17)    #fill first line
+    self._print_blocks(COL_IDX_BLACK, ilen*19)    #fill first line
+    self._print_col_text(COL_IDX_BLACK, "edges                  corners          ")
 
     for i in range (self.N_DIM):
       print('', end='\n')
       self._print_blocks(COL_IDX_BLACK, ilen*5)
       for j in range (self.N_DIM):
         self._print_blocks(self.col[SIDE_IDX_BACK][i][j], ilen)
-      self._print_blocks(COL_IDX_BLACK, ilen*9)
+      self._print_blocks(COL_IDX_BLACK, ilen*11)
+      self._print_ext_info(edge_block[i], corner_block[i], i)
 
     print('', end='\n')
-    self._print_blocks(COL_IDX_BLACK, ilen*17)    #fill seperator back/top
+    self._print_blocks(COL_IDX_BLACK, ilen*19)    #fill seperator back/top
+    self._print_ext_info(edge_block[3], corner_block[3], 3)
 
     for i in range (self.N_DIM):
       print('', end='\n')
@@ -225,20 +280,24 @@ class tRubikCube:
       for j in range (self.N_DIM):
         self._print_blocks(self.col[SIDE_IDX_BOT][i][j], ilen)
 
-      self._print_blocks(COL_IDX_BLACK, ilen)   #fill last row
+      self._print_blocks(COL_IDX_BLACK, ilen*3)   #fill last row
+      self._print_ext_info(edge_block[i+4], corner_block[i+4], i+4)
 
     print('', end='\n')
-    self._print_blocks(COL_IDX_BLACK, ilen*17)  #fill seperator top/front
+    self._print_blocks(COL_IDX_BLACK, ilen*19)  #fill seperator top/front
+    self._print_ext_info(edge_block[7], corner_block[7], 7) #last corner idx
 
     for i in range (self.N_DIM):
       print('', end='\n')
       self._print_blocks(COL_IDX_BLACK, ilen*5)
       for j in range (self.N_DIM):
         self._print_blocks(self.col[SIDE_IDX_FRONT][i][j], ilen)        
-      self._print_blocks(COL_IDX_BLACK, ilen*9)
-    
+      self._print_blocks(COL_IDX_BLACK, ilen*11)
+      self._print_ext_info(edge_block[8+i], None, 8+i)
+
     print('', end='\n')
-    self._print_blocks(COL_IDX_BLACK, ilen*17)  #fill last line
+    self._print_blocks(COL_IDX_BLACK, ilen*19)  #fill last line
+    self._print_ext_info(edge_block[11], None, 11)
     print('', end='\n')
 
   
@@ -294,7 +353,7 @@ class tRubikCube:
   
   def rotate_simple(self, side_idx, rotate_dir=ROT_DIR_CW):
     #rotate the main side, just a array rotatation
-    #self._rotate_side(side_idx, rotate_dir)
+    self._rotate_side(side_idx, rotate_dir)
     if side_idx == SIDE_IDX_TOP: 
       mem_side_back = self.col[SIDE_IDX_BACK][2].copy()
       #if rotate_dir == ROT_DIR_CW:    #0 slower!
@@ -308,7 +367,6 @@ class tRubikCube:
       #    i += 1
       #    j -= 1
       if rotate_dir:    #0    #True = CW
-        self.col[SIDE_IDX_TOP] = np.rot90(self.col[SIDE_IDX_TOP] , 3)
         self.col[SIDE_IDX_BACK][2][0]   = self.col[SIDE_IDX_LEFT][2][2] 
         self.col[SIDE_IDX_BACK][2][1]   = self.col[SIDE_IDX_LEFT][1][2]
         self.col[SIDE_IDX_BACK][2][2]   = self.col[SIDE_IDX_LEFT][0][2]
@@ -322,7 +380,6 @@ class tRubikCube:
         self.col[SIDE_IDX_RIGHT][1][0]  = mem_side_back[1]
         self.col[SIDE_IDX_RIGHT][2][0]  = mem_side_back[2]
       else:   #6
-        self.col[SIDE_IDX_TOP] = np.rot90(self.col[SIDE_IDX_TOP] , 1)
         self.col[SIDE_IDX_BACK][2][0]   = self.col[SIDE_IDX_RIGHT][0][0] 
         self.col[SIDE_IDX_BACK][2][1]   = self.col[SIDE_IDX_RIGHT][1][0] 
         self.col[SIDE_IDX_BACK][2][2]   = self.col[SIDE_IDX_RIGHT][2][0] 
@@ -338,7 +395,6 @@ class tRubikCube:
     elif side_idx == SIDE_IDX_BOT: 
       mem_side_back = self.col[SIDE_IDX_BACK][0].copy()
       if rotate_dir:    #1
-        self.col[SIDE_IDX_BOT] = np.rot90(self.col[SIDE_IDX_BOT] , 3)
         self.col[SIDE_IDX_BACK][0][2]   = self.col[SIDE_IDX_RIGHT][2][2] 
         self.col[SIDE_IDX_BACK][0][1]   = self.col[SIDE_IDX_RIGHT][1][2] 
         self.col[SIDE_IDX_BACK][0][0]   = self.col[SIDE_IDX_RIGHT][0][2] 
@@ -352,7 +408,6 @@ class tRubikCube:
         self.col[SIDE_IDX_LEFT][1][0]   = mem_side_back[1] 
         self.col[SIDE_IDX_LEFT][2][0]   = mem_side_back[0] 
       else:   #7
-        self.col[SIDE_IDX_BOT] = np.rot90(self.col[SIDE_IDX_BOT] , 1)
         self.col[SIDE_IDX_BACK][0][2]   = self.col[SIDE_IDX_LEFT][0][0] 
         self.col[SIDE_IDX_BACK][0][1]   = self.col[SIDE_IDX_LEFT][1][0]
         self.col[SIDE_IDX_BACK][0][0]   = self.col[SIDE_IDX_LEFT][2][0]
@@ -371,7 +426,6 @@ class tRubikCube:
       mem_side_back[1] = self.col[SIDE_IDX_BACK][1][0]
       mem_side_back[2] = self.col[SIDE_IDX_BACK][2][0]
       if rotate_dir:    #2
-        self.col[SIDE_IDX_LEFT] = np.rot90(self.col[SIDE_IDX_LEFT] , 3)
         self.col[SIDE_IDX_BACK][0][0]   = self.col[SIDE_IDX_BOT][2][2] 
         self.col[SIDE_IDX_BACK][1][0]   = self.col[SIDE_IDX_BOT][1][2]
         self.col[SIDE_IDX_BACK][2][0]   = self.col[SIDE_IDX_BOT][0][2]
@@ -385,7 +439,6 @@ class tRubikCube:
         self.col[SIDE_IDX_TOP][1][0]    = mem_side_back[1]
         self.col[SIDE_IDX_TOP][2][0]    = mem_side_back[2]
       else:   #8
-        self.col[SIDE_IDX_LEFT] = np.rot90(self.col[SIDE_IDX_LEFT] , 1)
         self.col[SIDE_IDX_BACK][0][0]   = self.col[SIDE_IDX_TOP][0][0] 
         self.col[SIDE_IDX_BACK][1][0]   = self.col[SIDE_IDX_TOP][1][0]
         self.col[SIDE_IDX_BACK][2][0]   = self.col[SIDE_IDX_TOP][2][0]
@@ -404,7 +457,6 @@ class tRubikCube:
       mem_side_back[1] = self.col[SIDE_IDX_BACK][1][2]
       mem_side_back[2] = self.col[SIDE_IDX_BACK][0][2]
       if rotate_dir:    #3
-        self.col[SIDE_IDX_RIGHT] = np.rot90(self.col[SIDE_IDX_RIGHT] , 3)
         self.col[SIDE_IDX_BACK][2][2]   = self.col[SIDE_IDX_TOP][2][2] 
         self.col[SIDE_IDX_BACK][1][2]   = self.col[SIDE_IDX_TOP][1][2]
         self.col[SIDE_IDX_BACK][0][2]   = self.col[SIDE_IDX_TOP][0][2]
@@ -418,7 +470,6 @@ class tRubikCube:
         self.col[SIDE_IDX_BOT][1][0]    = mem_side_back[1]
         self.col[SIDE_IDX_BOT][2][0]    = mem_side_back[2]
       else:    #9
-        self.col[SIDE_IDX_RIGHT] = np.rot90(self.col[SIDE_IDX_RIGHT] , 1)
         self.col[SIDE_IDX_BACK][2][2]   = self.col[SIDE_IDX_BOT][0][0] 
         self.col[SIDE_IDX_BACK][1][2]   = self.col[SIDE_IDX_BOT][1][0]
         self.col[SIDE_IDX_BACK][0][2]   = self.col[SIDE_IDX_BOT][2][0]
@@ -434,7 +485,6 @@ class tRubikCube:
     elif side_idx == SIDE_IDX_FRONT:
       mem_side_top = self.col[SIDE_IDX_TOP][2].copy()
       if rotate_dir:    #4
-        self.col[SIDE_IDX_FRONT] = np.rot90(self.col[SIDE_IDX_FRONT] , 3)
         #self.col[SIDE_IDX_TOP][2][0]    = self.col[SIDE_IDX_LEFT][2][0]
         #self.col[SIDE_IDX_TOP][2][1]    = self.col[SIDE_IDX_LEFT][2][1]
         #self.col[SIDE_IDX_TOP][2][2]    = self.col[SIDE_IDX_LEFT][2][2]
@@ -452,7 +502,6 @@ class tRubikCube:
         #self.col[SIDE_IDX_RIGHT][2][2]  = mem_side_top[2]
         self.col[SIDE_IDX_RIGHT][2]     = mem_side_top
       else:    #10
-        self.col[SIDE_IDX_FRONT] = np.rot90(self.col[SIDE_IDX_FRONT] , 1)
         #self.col[SIDE_IDX_TOP][2][0]    = self.col[SIDE_IDX_RIGHT][2][0]
         #self.col[SIDE_IDX_TOP][2][1]    = self.col[SIDE_IDX_RIGHT][2][1]
         #self.col[SIDE_IDX_TOP][2][2]    = self.col[SIDE_IDX_RIGHT][2][2]
@@ -472,7 +521,6 @@ class tRubikCube:
     elif side_idx == SIDE_IDX_BACK:
       mem_side_bot = self.col[SIDE_IDX_BOT][0].copy()
       if rotate_dir:    #5  
-        self.col[SIDE_IDX_BACK] = np.rot90(self.col[SIDE_IDX_BACK] , 3)
         #self.col[SIDE_IDX_BOT][0][2]    = self.col[SIDE_IDX_LEFT][0][2]
         #self.col[SIDE_IDX_BOT][0][1]    = self.col[SIDE_IDX_LEFT][0][1]
         #self.col[SIDE_IDX_BOT][0][0]    = self.col[SIDE_IDX_LEFT][0][0]
@@ -490,7 +538,6 @@ class tRubikCube:
         #self.col[SIDE_IDX_RIGHT][0][0]  = mem_side_bot[0]
         self.col[SIDE_IDX_RIGHT][0]     = mem_side_bot
       else:    #11
-        self.col[SIDE_IDX_BACK] = np.rot90(self.col[SIDE_IDX_BACK] , 1)
         #self.col[SIDE_IDX_BOT][0][2]    = self.col[SIDE_IDX_RIGHT][0][2]
         #self.col[SIDE_IDX_BOT][0][1]    = self.col[SIDE_IDX_RIGHT][0][1]
         #self.col[SIDE_IDX_BOT][0][0]    = self.col[SIDE_IDX_RIGHT][0][0]
@@ -704,179 +751,18 @@ class tRubikCube:
  
   #simple actions, less math, less if/else
   def actions_simple(self, action):
-    if action==0: 
-      #self.rotate_simple(SIDE_IDX_TOP, ROT_DIR_CW)
-      mem_side_back = self.col[SIDE_IDX_BACK][2].copy()
-      self.col[SIDE_IDX_TOP] = np.rot90(self.col[SIDE_IDX_TOP] , 3)
-      self.col[SIDE_IDX_BACK][2][0]   = self.col[SIDE_IDX_LEFT][2][2] 
-      self.col[SIDE_IDX_BACK][2][1]   = self.col[SIDE_IDX_LEFT][1][2]
-      self.col[SIDE_IDX_BACK][2][2]   = self.col[SIDE_IDX_LEFT][0][2]
-      self.col[SIDE_IDX_LEFT][0][2]   = self.col[SIDE_IDX_FRONT][0][0] 
-      self.col[SIDE_IDX_LEFT][1][2]   = self.col[SIDE_IDX_FRONT][0][1] 
-      self.col[SIDE_IDX_LEFT][2][2]   = self.col[SIDE_IDX_FRONT][0][2] 
-      self.col[SIDE_IDX_FRONT][0][0]  = self.col[SIDE_IDX_RIGHT][2][0]
-      self.col[SIDE_IDX_FRONT][0][1]  = self.col[SIDE_IDX_RIGHT][1][0]
-      self.col[SIDE_IDX_FRONT][0][2]  = self.col[SIDE_IDX_RIGHT][0][0]
-      self.col[SIDE_IDX_RIGHT][0][0]  = mem_side_back[0] 
-      self.col[SIDE_IDX_RIGHT][1][0]  = mem_side_back[1]
-      self.col[SIDE_IDX_RIGHT][2][0]  = mem_side_back[2]
-    elif action==6: 
-      #self.rotate_simple(SIDE_IDX_TOP, ROT_DIR_CCW)
-      mem_side_back = self.col[SIDE_IDX_BACK][2].copy()
-      self.col[SIDE_IDX_TOP] = np.rot90(self.col[SIDE_IDX_TOP] , 1)
-      self.col[SIDE_IDX_BACK][2][0]   = self.col[SIDE_IDX_RIGHT][0][0] 
-      self.col[SIDE_IDX_BACK][2][1]   = self.col[SIDE_IDX_RIGHT][1][0] 
-      self.col[SIDE_IDX_BACK][2][2]   = self.col[SIDE_IDX_RIGHT][2][0] 
-      self.col[SIDE_IDX_RIGHT][0][0]  = self.col[SIDE_IDX_FRONT][0][2]
-      self.col[SIDE_IDX_RIGHT][1][0]  = self.col[SIDE_IDX_FRONT][0][1]
-      self.col[SIDE_IDX_RIGHT][2][0]  = self.col[SIDE_IDX_FRONT][0][0]
-      self.col[SIDE_IDX_FRONT][0][0]  = self.col[SIDE_IDX_LEFT][0][2]
-      self.col[SIDE_IDX_FRONT][0][1]  = self.col[SIDE_IDX_LEFT][1][2]
-      self.col[SIDE_IDX_FRONT][0][2]  = self.col[SIDE_IDX_LEFT][2][2]
-      self.col[SIDE_IDX_LEFT][0][2]   = mem_side_back[2] 
-      self.col[SIDE_IDX_LEFT][1][2]   = mem_side_back[1] 
-      self.col[SIDE_IDX_LEFT][2][2]   = mem_side_back[0] 
-    elif action==1: 
-      #self.rotate_simple(SIDE_IDX_BOT, ROT_DIR_CW)
-      mem_side_back = self.col[SIDE_IDX_BACK][0].copy()
-      self.col[SIDE_IDX_BOT] = np.rot90(self.col[SIDE_IDX_BOT] , 3)
-      self.col[SIDE_IDX_BACK][0][2]   = self.col[SIDE_IDX_RIGHT][2][2] 
-      self.col[SIDE_IDX_BACK][0][1]   = self.col[SIDE_IDX_RIGHT][1][2] 
-      self.col[SIDE_IDX_BACK][0][0]   = self.col[SIDE_IDX_RIGHT][0][2] 
-      self.col[SIDE_IDX_RIGHT][2][2]  = self.col[SIDE_IDX_FRONT][2][0]
-      self.col[SIDE_IDX_RIGHT][1][2]  = self.col[SIDE_IDX_FRONT][2][1]
-      self.col[SIDE_IDX_RIGHT][0][2]  = self.col[SIDE_IDX_FRONT][2][2]
-      self.col[SIDE_IDX_FRONT][2][0]  = self.col[SIDE_IDX_LEFT][0][0]
-      self.col[SIDE_IDX_FRONT][2][1]  = self.col[SIDE_IDX_LEFT][1][0]
-      self.col[SIDE_IDX_FRONT][2][2]  = self.col[SIDE_IDX_LEFT][2][0]
-      self.col[SIDE_IDX_LEFT][0][0]   = mem_side_back[2] 
-      self.col[SIDE_IDX_LEFT][1][0]   = mem_side_back[1] 
-      self.col[SIDE_IDX_LEFT][2][0]   = mem_side_back[0] 
-    elif action==7: 
-      #self.rotate_simple(SIDE_IDX_BOT, ROT_DIR_CCW)
-      mem_side_back = self.col[SIDE_IDX_BACK][0].copy()
-      self.col[SIDE_IDX_BOT] = np.rot90(self.col[SIDE_IDX_BOT] , 1)
-      self.col[SIDE_IDX_BACK][0][2]   = self.col[SIDE_IDX_LEFT][0][0] 
-      self.col[SIDE_IDX_BACK][0][1]   = self.col[SIDE_IDX_LEFT][1][0]
-      self.col[SIDE_IDX_BACK][0][0]   = self.col[SIDE_IDX_LEFT][2][0]
-      self.col[SIDE_IDX_LEFT][0][0]   = self.col[SIDE_IDX_FRONT][2][0] 
-      self.col[SIDE_IDX_LEFT][1][0]   = self.col[SIDE_IDX_FRONT][2][1] 
-      self.col[SIDE_IDX_LEFT][2][0]   = self.col[SIDE_IDX_FRONT][2][2] 
-      self.col[SIDE_IDX_FRONT][2][0]  = self.col[SIDE_IDX_RIGHT][2][2]
-      self.col[SIDE_IDX_FRONT][2][1]  = self.col[SIDE_IDX_RIGHT][1][2]
-      self.col[SIDE_IDX_FRONT][2][2]  = self.col[SIDE_IDX_RIGHT][0][2]
-      self.col[SIDE_IDX_RIGHT][0][2]  = mem_side_back[0] 
-      self.col[SIDE_IDX_RIGHT][1][2]  = mem_side_back[1]
-      self.col[SIDE_IDX_RIGHT][2][2]  = mem_side_back[2]
-    elif action==2: 
-      #self.rotate_simple(SIDE_IDX_LEFT, ROT_DIR_CW)
-      mem_side_back = [0] * 3
-      mem_side_back[0] = self.col[SIDE_IDX_BACK][0][0]
-      mem_side_back[1] = self.col[SIDE_IDX_BACK][1][0]
-      mem_side_back[2] = self.col[SIDE_IDX_BACK][2][0]
-      self.col[SIDE_IDX_LEFT] = np.rot90(self.col[SIDE_IDX_LEFT] , 3)
-      self.col[SIDE_IDX_BACK][0][0]   = self.col[SIDE_IDX_BOT][2][2] 
-      self.col[SIDE_IDX_BACK][1][0]   = self.col[SIDE_IDX_BOT][1][2]
-      self.col[SIDE_IDX_BACK][2][0]   = self.col[SIDE_IDX_BOT][0][2]
-      self.col[SIDE_IDX_BOT][0][2]    = self.col[SIDE_IDX_FRONT][2][0] 
-      self.col[SIDE_IDX_BOT][1][2]    = self.col[SIDE_IDX_FRONT][1][0] 
-      self.col[SIDE_IDX_BOT][2][2]    = self.col[SIDE_IDX_FRONT][0][0] 
-      self.col[SIDE_IDX_FRONT][0][0]  = self.col[SIDE_IDX_TOP][0][0]
-      self.col[SIDE_IDX_FRONT][1][0]  = self.col[SIDE_IDX_TOP][1][0]
-      self.col[SIDE_IDX_FRONT][2][0]  = self.col[SIDE_IDX_TOP][2][0]
-      self.col[SIDE_IDX_TOP][0][0]    = mem_side_back[0] 
-      self.col[SIDE_IDX_TOP][1][0]    = mem_side_back[1]
-      self.col[SIDE_IDX_TOP][2][0]    = mem_side_back[2]
-    elif action==8: 
-      #self.rotate_simple(SIDE_IDX_LEFT, ROT_DIR_CCW)
-      mem_side_back = [0] * 3
-      mem_side_back[0] = self.col[SIDE_IDX_BACK][0][0]
-      mem_side_back[1] = self.col[SIDE_IDX_BACK][1][0]
-      mem_side_back[2] = self.col[SIDE_IDX_BACK][2][0]
-      self.col[SIDE_IDX_LEFT] = np.rot90(self.col[SIDE_IDX_LEFT] , 1)
-      self.col[SIDE_IDX_BACK][0][0]   = self.col[SIDE_IDX_TOP][0][0] 
-      self.col[SIDE_IDX_BACK][1][0]   = self.col[SIDE_IDX_TOP][1][0]
-      self.col[SIDE_IDX_BACK][2][0]   = self.col[SIDE_IDX_TOP][2][0]
-      self.col[SIDE_IDX_TOP][0][0]    = self.col[SIDE_IDX_FRONT][0][0] 
-      self.col[SIDE_IDX_TOP][1][0]    = self.col[SIDE_IDX_FRONT][1][0] 
-      self.col[SIDE_IDX_TOP][2][0]    = self.col[SIDE_IDX_FRONT][2][0] 
-      self.col[SIDE_IDX_FRONT][0][0]  = self.col[SIDE_IDX_BOT][2][2]
-      self.col[SIDE_IDX_FRONT][1][0]  = self.col[SIDE_IDX_BOT][1][2]
-      self.col[SIDE_IDX_FRONT][2][0]  = self.col[SIDE_IDX_BOT][0][2]
-      self.col[SIDE_IDX_BOT][2][2]    = mem_side_back[0] 
-      self.col[SIDE_IDX_BOT][1][2]    = mem_side_back[1]
-      self.col[SIDE_IDX_BOT][0][2]    = mem_side_back[2]
-    elif action==3: 
-      #self.rotate_simple(SIDE_IDX_RIGHT, ROT_DIR_CW)
-      mem_side_back = [0] * 3
-      mem_side_back[0] = self.col[SIDE_IDX_BACK][2][2]
-      mem_side_back[1] = self.col[SIDE_IDX_BACK][1][2]
-      mem_side_back[2] = self.col[SIDE_IDX_BACK][0][2]
-      self.col[SIDE_IDX_RIGHT] = np.rot90(self.col[SIDE_IDX_RIGHT] , 3)
-      self.col[SIDE_IDX_BACK][2][2]   = self.col[SIDE_IDX_TOP][2][2] 
-      self.col[SIDE_IDX_BACK][1][2]   = self.col[SIDE_IDX_TOP][1][2]
-      self.col[SIDE_IDX_BACK][0][2]   = self.col[SIDE_IDX_TOP][0][2]
-      self.col[SIDE_IDX_TOP][2][2]    = self.col[SIDE_IDX_FRONT][2][2] 
-      self.col[SIDE_IDX_TOP][1][2]    = self.col[SIDE_IDX_FRONT][1][2] 
-      self.col[SIDE_IDX_TOP][0][2]    = self.col[SIDE_IDX_FRONT][0][2] 
-      self.col[SIDE_IDX_FRONT][0][2]  = self.col[SIDE_IDX_BOT][2][0]
-      self.col[SIDE_IDX_FRONT][1][2]  = self.col[SIDE_IDX_BOT][1][0]
-      self.col[SIDE_IDX_FRONT][2][2]  = self.col[SIDE_IDX_BOT][0][0]
-      self.col[SIDE_IDX_BOT][0][0]    = mem_side_back[0] 
-      self.col[SIDE_IDX_BOT][1][0]    = mem_side_back[1]
-      self.col[SIDE_IDX_BOT][2][0]    = mem_side_back[2]
-    elif action==9: 
-      #self.rotate_simple(SIDE_IDX_RIGHT, ROT_DIR_CCW)
-      mem_side_back = [0] * 3
-      mem_side_back[0] = self.col[SIDE_IDX_BACK][2][2]
-      mem_side_back[1] = self.col[SIDE_IDX_BACK][1][2]
-      mem_side_back[2] = self.col[SIDE_IDX_BACK][0][2]
-      self.col[SIDE_IDX_RIGHT] = np.rot90(self.col[SIDE_IDX_RIGHT] , 1)
-      self.col[SIDE_IDX_BACK][2][2]   = self.col[SIDE_IDX_BOT][0][0] 
-      self.col[SIDE_IDX_BACK][1][2]   = self.col[SIDE_IDX_BOT][1][0]
-      self.col[SIDE_IDX_BACK][0][2]   = self.col[SIDE_IDX_BOT][2][0]
-      self.col[SIDE_IDX_BOT][0][0]    = self.col[SIDE_IDX_FRONT][2][2] 
-      self.col[SIDE_IDX_BOT][1][0]    = self.col[SIDE_IDX_FRONT][1][2] 
-      self.col[SIDE_IDX_BOT][2][0]    = self.col[SIDE_IDX_FRONT][0][2] 
-      self.col[SIDE_IDX_FRONT][0][2]  = self.col[SIDE_IDX_TOP][0][2]
-      self.col[SIDE_IDX_FRONT][1][2]  = self.col[SIDE_IDX_TOP][1][2]
-      self.col[SIDE_IDX_FRONT][2][2]  = self.col[SIDE_IDX_TOP][2][2]
-      self.col[SIDE_IDX_TOP][2][2]    = mem_side_back[0] 
-      self.col[SIDE_IDX_TOP][1][2]    = mem_side_back[1]
-      self.col[SIDE_IDX_TOP][0][2]    = mem_side_back[2]
-    elif action==4: 
-      #self.rotate_simple(SIDE_IDX_FRONT, ROT_DIR_CW)
-      mem_side_top = self.col[SIDE_IDX_TOP][2].copy()
-      self.col[SIDE_IDX_FRONT] = np.rot90(self.col[SIDE_IDX_FRONT] , 3)
-      self.col[SIDE_IDX_TOP][2]       = self.col[SIDE_IDX_LEFT][2]
-      self.col[SIDE_IDX_LEFT][2]      = self.col[SIDE_IDX_BOT][2]
-      self.col[SIDE_IDX_BOT][2]       = self.col[SIDE_IDX_RIGHT][2]
-      self.col[SIDE_IDX_RIGHT][2]     = mem_side_top
-    elif action==10: 
-      #self.rotate_simple(SIDE_IDX_FRONT, ROT_DIR_CCW)
-      mem_side_top = self.col[SIDE_IDX_TOP][2].copy()
-      self.col[SIDE_IDX_FRONT] = np.rot90(self.col[SIDE_IDX_FRONT] , 1)
-      self.col[SIDE_IDX_TOP][2]       = self.col[SIDE_IDX_RIGHT][2]
-      self.col[SIDE_IDX_RIGHT][2]     = self.col[SIDE_IDX_BOT][2]      
-      self.col[SIDE_IDX_BOT][2]       = self.col[SIDE_IDX_LEFT][2]
-      self.col[SIDE_IDX_LEFT][2]      = mem_side_top
-    elif action==5: 
-      #self.rotate_simple(SIDE_IDX_BACK, ROT_DIR_CW)
-      mem_side_bot = self.col[SIDE_IDX_BOT][0].copy()
-      self.col[SIDE_IDX_BACK] = np.rot90(self.col[SIDE_IDX_BACK] , 3)
-      self.col[SIDE_IDX_BOT][0]       = self.col[SIDE_IDX_LEFT][0]
-      self.col[SIDE_IDX_LEFT][0]      = self.col[SIDE_IDX_TOP][0]
-      self.col[SIDE_IDX_TOP][0]       = self.col[SIDE_IDX_RIGHT][0]
-      self.col[SIDE_IDX_RIGHT][0]     = mem_side_bot
-    elif action==11: 
-      #self.rotate_simple(SIDE_IDX_BACK, ROT_DIR_CCW)
-      mem_side_bot = self.col[SIDE_IDX_BOT][0].copy()
-      self.col[SIDE_IDX_BACK] = np.rot90(self.col[SIDE_IDX_BACK] , 1)
-      self.col[SIDE_IDX_BOT][0]       = self.col[SIDE_IDX_RIGHT][0]
-      self.col[SIDE_IDX_RIGHT][0]     = self.col[SIDE_IDX_TOP][0]
-      self.col[SIDE_IDX_TOP][0]       = self.col[SIDE_IDX_LEFT][0]
-      self.col[SIDE_IDX_LEFT][0]      = mem_side_bot
-
+    if action==0:         self.rotate_simple(SIDE_IDX_TOP, ROT_DIR_CW)
+    elif action==6:       self.rotate_simple(SIDE_IDX_TOP, ROT_DIR_CCW)
+    elif action==1:       self.rotate_simple(SIDE_IDX_BOT, ROT_DIR_CW)
+    elif action==7:       self.rotate_simple(SIDE_IDX_BOT, ROT_DIR_CCW)
+    elif action==2:       self.rotate_simple(SIDE_IDX_LEFT, ROT_DIR_CW)
+    elif action==8:       self.rotate_simple(SIDE_IDX_LEFT, ROT_DIR_CCW)
+    elif action==3:       self.rotate_simple(SIDE_IDX_RIGHT, ROT_DIR_CW)
+    elif action==9:       self.rotate_simple(SIDE_IDX_RIGHT, ROT_DIR_CCW)
+    elif action==4:       self.rotate_simple(SIDE_IDX_FRONT, ROT_DIR_CW)
+    elif action==10:      self.rotate_simple(SIDE_IDX_FRONT, ROT_DIR_CCW)
+    elif action==5:       self.rotate_simple(SIDE_IDX_BACK, ROT_DIR_CW)
+    elif action==11:      self.rotate_simple(SIDE_IDX_BACK, ROT_DIR_CCW)
     else: return
     #append 
     self.actions_list.append(action)
@@ -903,8 +789,160 @@ class tRubikCube:
   #empties the action list
   def clear_action_list(self):
     self.actions_list.clear()
-
   
+  #get a copy from the action list
+  def get_action_list(self):
+    return self.actions_list.copy()
+  
+  #rotates a edge on white side 
+  #side: Front, back, left, right
+  def rot_white_edge(self, side_idx, repetitions):
+    degree=10   #degree means how many repetitions it takes to reach the original state again, just information
+
+    #sequence taken from ruwix.com
+    #difference to our notation D...down (=bot)   U...up(Top)   
+    sequence = {
+      SIDE_IDX_FRONT:[ 4, 6, 3, 0],          #F  U' R  U   rotate white edge on front
+      SIDE_IDX_LEFT :[ 2, 6, 4, 0],          #L  U' F  U   rotate white edge on left
+      SIDE_IDX_BACK :[ 5, 6, 2, 0],          #B  U' L  U   rotate white edge on back
+      SIDE_IDX_RIGHT:[ 3, 6, 5, 0],          #R  U' B  U   rotate white edge on right
+      }
+    for _ in range(repetitions):
+      for action in sequence[side_idx]:
+        self.actions_simple(action)
+  
+  def rot_white_corner(self, side_idx, repetitions):
+    degree=6   #degree means how many repetitions it takes to reach the original state again, just information
+
+    #sequence taken from ruwix.com
+    sequence = {
+      SIDE_IDX_FRONT:[10, 7, 4, 1],          #F' D' F  D   rotate white corner on front
+      SIDE_IDX_LEFT :[ 8, 7, 2, 1],          #L' D' L  D   rotate white corner on left
+      SIDE_IDX_BACK :[11, 7, 5, 1],          #B' D' B  D   rotate white corner on back
+      SIDE_IDX_RIGHT:[ 9, 7, 3, 1],          #R' D' R  D   rotate white corner on right
+      }
+    for _ in range(repetitions):
+      for action in sequence[side_idx]:
+        self.actions_simple(action)
+  
+  """
+  """
+  def swap_second_layer_edge(self, side_idx, direction, repetitions):
+    """
+    sequence taken from ruwix.com
+    difference to our notation D...down (=bot)   U...up(Top)   
+    there are 2 basic algos, left and right. they repeat for each side
+    we can either use left or right for each 4 sides, no need to use both
+    in ruwix algo the cube is upside-down (yellow at up side)
+    notation is the same so we replace U with D 
+      but order is different R > F --> R > B
+
+    RIGHT-ALGO ORIGINAL
+    U  R  U' R' U' F' U  F --> (cube is upside/down, white is at bottom)
+    D  R  D' R' D' B' D  B     (translation - white is at top)
+      
+    LEFT-ALGO ORIGINAL
+    U' L' U  L  U  F  U' F' --> (cube is upside/down, white is at bottom)
+    D' L' D  L  D  B  D' B'    (translation - white is at top)
+    """
+
+    #because algo is for upside down cube its order is changed here with direction
+    if direction=="right":
+      #left algo
+      sequence = {
+        SIDE_IDX_FRONT: [ 7, 9, 1, 3, 1, 4, 7, 10 ],    #D' R' D  R  D  F  D' F'         
+        SIDE_IDX_LEFT:  [ 7,10, 1, 4, 1, 2, 7, 8  ],    #D' F' D  F  D  L  D' L'      
+        SIDE_IDX_BACK:  [ 7, 8, 1, 2, 1, 5, 7, 11 ],    #D' L' D  L  D  B  D' B'      
+        SIDE_IDX_RIGHT: [ 7,11, 1, 5, 1, 3, 7, 9  ],    #D' B' D  B  D  R  D' R'      
+        }
+
+    elif direction=="left":
+      #right algo
+      sequence = {
+        SIDE_IDX_FRONT: [ 1, 2, 7, 8, 7,10, 1, 4  ],    #D  L  D' L' D' F' D  F          
+        SIDE_IDX_LEFT:  [ 1, 5, 7,11, 7, 8, 1, 2  ],    #D  B  D' B' D' L' D  L          
+        SIDE_IDX_BACK:  [ 1, 3, 7, 9, 7,11, 1, 5  ],    #D  R  D' R' D' B' D  B      
+        SIDE_IDX_RIGHT: [ 1, 4, 7,10, 7, 9, 1, 3  ],    #D  F  D' F' D' R' D  R        
+        }
+    else:
+      return
+
+    for _ in range(repetitions):
+      for action in sequence[side_idx]:
+        self.actions_simple(action)
+  """
+  position yellow edges (create yellow cross)
+  apply on "dot" , "L" or "line" pattern (3x, 2x, 1x)
+  turn the cube between each call, so we use two algos
+  """
+  def position_yellow_edge(self, algo_num):
+    #F  R  U  R' U' F'  original algo
+    #F  L  D  L' D' F'  (translation white is at top)
+    #B  R  D  R' D' B'  (translation white is at top, cube turned 180° L <-> R)
+    sequence = {
+      0:  [ 4, 2, 1, 8, 7,10 ],           #F  L  D  L' D' F'       
+      1:  [ 5, 3, 1, 9, 7,11 ],           #B  R  D  R' D' B'       
+      2:  [ 2, 5, 1,11, 7,8  ],           #L  B  D  B' D' L'       
+      3:  [ 3, 4, 1,10, 7,9  ],           #R  F  D  F' D' R'       
+
+      }
+    for action in sequence[algo_num]:
+      self.actions_simple(action)
+  
+  """
+  swap 2 yellow edges (solve last layer edges)
+  apply algo twice to swap opposite edges, for this use combination algo 0+1 or algo 2+3
+  """
+  def swap_yellow_edge(self, algo_num):
+    #R  U  R' U  R  U2  R'  U   original algo
+    #R  D  R' D  R  D2  R'  D  (translation white is at top)
+    sequence = {
+      0:  [ 2, 1, 8, 1, 2, 1, 1, 8, 1 ],          #L  D  L' D  L  D2  L'  D      e10-e11 
+      1:  [ 3, 1, 9, 1, 3, 1, 1, 9, 1 ],          #R  D  R' D  R  D2  R'  D      e8-e9 
+      2:  [ 4, 1,10, 1, 4, 1, 1,10, 1 ],          #F  D  F' D  F  D2  F'  D      e8-e11 
+      3:  [ 5, 1,11, 1, 5, 1, 1,11, 1 ]           #B  D  B' D  B  D2  B'  D      e9-e10 
+      }
+    for action in sequence[algo_num]:
+      self.actions_simple(action)
+
+  def position_yellow_corner(self, algo_num):
+    #U  R  U' L' U  R' U' L   original algo
+    #D  R  D' L' D  R' D' L  (translation white is at top)
+    sequence = {
+      0:  [ 1, 3, 7, 8, 1, 9, 7, 2 ],          #D  R  D' L' D  R' D' L    #c4 unchanged
+      1:  [ 1, 5, 7,10, 1,11, 7, 4 ],          #D  B  D' F' D  B' D' F    #c5 unchanged
+      2:  [ 1, 2, 7, 9, 1, 8, 7, 3 ],          #D  L  D' R' D  L' D' R    #c6 unchanged
+      3:  [ 1, 4, 7,11, 1,10, 7, 5 ],          #D  F  D' B' D  F' D' B    #c7 unchanged
+
+      }
+    for action in sequence[algo_num]:
+      self.actions_simple(action)
+
+  """
+  basic algo for orienting last layer corners
+    1.  rotate D until a wrong oriented corner is in position
+    2.  apply algo x2 or x4 times on the wrong corner, this will bring yellow sticker in position.
+    3.  if all corners correct --> Cube finished
+        else goto 1:
+  
+  you need only one of this algos as you can solve the cube with loop describe above.
+  suggestion is to search the first misplaced corner and then loop with the algo for that corner over the whole cube
+  this may save one move :)
+  """
+  def rotate_yellow_corner(self, algo_num, repetitions):
+    #R' D' R  D    original algo
+    #R' U' R  U   (translation white is at top)
+    sequence = {
+      0:  [ 9, 6, 3, 0  ],          #R' U' R  U   rotate c4
+      1:  [11, 6, 5, 0  ],          #B' U' B  U   rotate c5
+      2:  [ 8, 6, 2, 0  ],          #L' U' L  U   rotate c6
+      3:  [10, 6, 4, 0  ],          #F' U' F  U   rotate c7
+      }
+    for _ in range(repetitions):
+      for action in sequence[algo_num]:
+        self.actions_simple(action)
+
+
   #save to .JSON file
   def save_to_file(self, filename):
     #open the file, if exists replaces all content
@@ -927,7 +965,6 @@ class tRubikCube:
       indata = json.loads(infile.read())
       self.col            = np.array(indata['col'])
       self.actions_list   = indata['actions']
-
     return(0)
 
     #compares datafield
@@ -957,20 +994,129 @@ class tRubikCube:
         for k in range(3):
           if self.col[i][j][k] == cube.col[i][j][k]: score += 1
     return(score)
+  
+  """
+  search for <edge_to_search> and return their positition from 0 to 11, 
+    search by array value 
+    location = cube.search_edge(orig_edge) returns for example:
+    [0,1,3,2...]  e00 and e01..correct, e02 is at position e03 and vice versa
+      location = cube.search_edge(orig_edge[2:3]) will give you 3 in this case
+      location = cube.search_edge(orig_edge[3:4]) will give you 2 in this case
+  edge_to_search can be single or multiple edges
+  will ignore wrong rotation
+  """
+  def search_edge(self, edge_to_search):
+    #get actual edges from cube
+    edges = self.get_edge(sort=True)
+    edge_location = []
+    cnt = 0
+    if type(edge_to_search[0]) is not list:
+      edge_to_search = [edge_to_search]
 
-  def self_test(self):
-    #print("Check consistency of data")
-    #load color data for corner, edge and center blocks
-    #edge has 3 visible sides, corner has 2 visible sides
-    corner_block_idx = self.N_DIM - 1
+    for edge_target in edge_to_search:
+      #sort each target
+      edge_target = np.sort(edge_target).tolist()
+      for n in range(12): 
+        if edges[n] == edge_target:
+          #print("Edge to solve e%02d found at location: %d" % (cnt, n))
+          cnt += 1
+          edge_location.append(n)
+    #only one element -> output as number, otherwise output as list
+    if len(edge_location)==1:       return edge_location[0]
+    else:                           return edge_location
 
+  """
+  search for <corner_to_search> and return their positition from 0 to 7, 
+    search by array value 
+    location = cube.search_corner(orig_corner) returns for example:
+    [0,1,3,2...]  c00 and c01..correct, c02 is at position c03 and vice versa
+      location = cube.search_corner(orig_corner[2:3]) will give you 3 in this case
+      location = cube.search_corner(orig_corner[3:4]) will give you 2 in this case
+  corner_to_search can be single or multiple edges
+  will ignore wrong rotation
+  """
+  def search_corner(self, corner_to_search):
+    #get actual edges from cube
+    corners = self.get_corner(sort=True)
+    corner_location = []
+    cnt = 0
+    if type(corner_to_search[0]) is not list:
+      corner_to_search = [corner_to_search]
+
+    for corner_target in corner_to_search:
+      #sort each target
+      corner_target = np.sort(corner_target).tolist()
+      for n in range(8): 
+        if corners[n] == corner_target:
+          #print("Edge to solve e%02d found at location: %d" % (cnt, n))
+          cnt += 1
+          corner_location.append(n)
+    #only one element -> output as number, otherwise output as list
+    if len(corner_location)==1:     return corner_location[0]
+    else:                           return corner_location
+
+
+
+  """
+  edges are numbered from up-mid-down, used in 6-step standard solving sequence
+  get all edges or a single edge location given by <location> from 0 to 11
+  optional sorting color values, <sort>=True
+  """
+  def get_edge(self, location=None, sort=False):
+    edge_block       = [[0]*2 for _ in range(12)]
+    edge_block[0][0] = self.col[SIDE_IDX_TOP][0][1]
+    edge_block[0][1] = self.col[SIDE_IDX_BACK][2][1]
+    
+    edge_block[1][0] = self.col[SIDE_IDX_TOP][1][2]
+    edge_block[1][1] = self.col[SIDE_IDX_RIGHT][1][0]
+    
+    edge_block[2][0] = self.col[SIDE_IDX_TOP][2][1]
+    edge_block[2][1] = self.col[SIDE_IDX_FRONT][0][1]
+    
+    edge_block[3][0] = self.col[SIDE_IDX_TOP][1][0]
+    edge_block[3][1] = self.col[SIDE_IDX_LEFT][1][2]
+
+    edge_block[4][0] = self.col[SIDE_IDX_BACK][1][2]
+    edge_block[4][1] = self.col[SIDE_IDX_RIGHT][0][1]
+    
+    edge_block[5][0] = self.col[SIDE_IDX_RIGHT][2][1]
+    edge_block[5][1] = self.col[SIDE_IDX_FRONT][1][2]
+
+    edge_block[6][0] = self.col[SIDE_IDX_FRONT][1][0] 
+    edge_block[6][1] = self.col[SIDE_IDX_LEFT][2][1]
+    
+    edge_block[7][0] = self.col[SIDE_IDX_LEFT][0][1]
+    edge_block[7][1] = self.col[SIDE_IDX_BACK][1][0]
+
+    edge_block[8][0] = self.col[SIDE_IDX_BOT][0][1]
+    edge_block[8][1] = self.col[SIDE_IDX_BACK][0][1]
+    
+    edge_block[9][0] = self.col[SIDE_IDX_BOT][1][2]
+    edge_block[9][1] = self.col[SIDE_IDX_LEFT][1][0]
+    
+    edge_block[10][0] = self.col[SIDE_IDX_BOT][2][1]
+    edge_block[10][1] = self.col[SIDE_IDX_FRONT][2][1]
+    
+    edge_block[11][0] = self.col[SIDE_IDX_BOT][1][0]
+    edge_block[11][1] = self.col[SIDE_IDX_RIGHT][1][2]
+    #requested sorted values
+    if sort == True:
+      for n in range(12):
+        edge_block[n]      = np.sort(edge_block[n]).tolist()
+    #requested a specific location
+    if location: return edge_block[location]
+
+    return edge_block
+
+  """
+  corners are numbered starting from up/left position in clockwise direction
+  continuing on down/left in clockwise direction
+  get all corners or a single corner location given by <location> from 0 to 7
+  optional sorting color values, <sort>=True
+  """
+  def get_corner(self, location=None, sort=False):
     corner_block  = [[0]*3 for _ in range(8)]  
-    edge_block    = [[0]*2 for _ in range(12)]
-    center_block  = [0] * 6
-    
-    for i in range(6):
-      center_block[i] = self.col[i][1][1]
-    
+    corner_block_idx = self.N_DIM - 1
 
     corner_block[0][0] = self.col[SIDE_IDX_TOP][0][0]
     corner_block[0][1] = self.col[SIDE_IDX_BACK][corner_block_idx][0]
@@ -1003,98 +1149,54 @@ class tRubikCube:
     corner_block[7][0] = self.col[SIDE_IDX_BOT][corner_block_idx][0]
     corner_block[7][1] = self.col[SIDE_IDX_FRONT][corner_block_idx][corner_block_idx]
     corner_block[7][2] = self.col[SIDE_IDX_RIGHT][corner_block_idx][corner_block_idx]
-    
-    edge_block[0][0] = self.col[SIDE_IDX_TOP][0][1]
-    edge_block[0][1] = self.col[SIDE_IDX_BACK][2][1]
-    
-    edge_block[1][0] = self.col[SIDE_IDX_TOP][1][2]
-    edge_block[1][1] = self.col[SIDE_IDX_RIGHT][1][0]
-    
-    edge_block[2][0] = self.col[SIDE_IDX_TOP][2][1]
-    edge_block[2][1] = self.col[SIDE_IDX_FRONT][0][1]
-    
-    edge_block[3][0] = self.col[SIDE_IDX_TOP][1][0]
-    edge_block[3][1] = self.col[SIDE_IDX_LEFT][1][2]
+    #requested sorted values
+    if sort == True:
+      for n in range(8):
+        corner_block[n]      = np.sort(corner_block[n]).tolist()
+    #requested a specific location
+    if location: return corner_block[location]
+    return corner_block
 
-    edge_block[4][0] = self.col[SIDE_IDX_BOT][0][1]
-    edge_block[4][1] = self.col[SIDE_IDX_BACK][0][1]
-    
-    edge_block[5][0] = self.col[SIDE_IDX_BOT][1][2]
-    edge_block[5][1] = self.col[SIDE_IDX_LEFT][1][0]
-    
-    edge_block[6][0] = self.col[SIDE_IDX_BOT][2][1]
-    edge_block[6][1] = self.col[SIDE_IDX_FRONT][2][1]
-    
-    edge_block[7][0] = self.col[SIDE_IDX_BOT][1][0]
-    edge_block[7][1] = self.col[SIDE_IDX_RIGHT][1][2]
-    
-    edge_block[8][0] = self.col[SIDE_IDX_RIGHT][0][1]
-    edge_block[8][1] = self.col[SIDE_IDX_BACK][1][2]
-    
-    edge_block[9][0] = self.col[SIDE_IDX_RIGHT][2][1]
-    edge_block[9][1] = self.col[SIDE_IDX_FRONT][1][2]
-    
-    edge_block[10][0] = self.col[SIDE_IDX_LEFT][0][1]
-    edge_block[10][1] = self.col[SIDE_IDX_BACK][1][0]
-    
-    edge_block[11][0] = self.col[SIDE_IDX_LEFT][2][1]
-    edge_block[11][1] = self.col[SIDE_IDX_FRONT][1][0]   
 
-    #sort by value
-    center_block = np.sort(center_block)
 
-    for i in range(8):
-      corner_block[i] = np.sort(corner_block[i]).tolist()
-    
-    for n in range(12):
-      edge_block[n] = np.sort(edge_block[n])
-      edge_block[n] = edge_block[n].tolist()
-    
-    #print(corner_block) 
-    #print(edge_block)     
-    #print(center_block) 
+  def get_center(self, location=None, sort=False):
+    center_block  = [0] * 6
+    for i in range(6):
+      center_block[i] = self.col[i][1][1]
+    #requested sorted values
+    if sort == True:
+        center_block      = np.sort(corner_block).tolist()
+    #requested a specific location
+    if location: return center_block[location]
+    return center_block    
 
-    #colors used in cube
-    cube_col_idx = []
-    cube_col_idx.append(COL_IDX_WHITE)
-    cube_col_idx.append(COL_IDX_YELLOW)
-    cube_col_idx.append(COL_IDX_ORANGE)
-    cube_col_idx.append(COL_IDX_RED)
-    cube_col_idx.append(COL_IDX_GREEN)
-    cube_col_idx.append(COL_IDX_BLUE)
-        
-    #check amount of colors for whole cube, must be N_DIM * N_DIM
-    color_cnt_target = self.N_DIM*self.N_DIM
-    color_count  = [0] * 6
-    #.count works only for rows, therefore step all rows.
-    #per row call .count for each color_idx
-    for side in self.col:
-      for row in side:
-        for col_idx in cube_col_idx:
-          color_count[col_idx] = color_count[col_idx] + row.tolist().count(col_idx)   
-    #print(color_count)            
-    for color in color_count:
-      if color != color_cnt_target: return(False)
-    
 
-    corner_block_valid  = [[0]*3 for _ in range(8)]  
-    edge_block_valid    = [[0]*2 for _ in range(12)]
-    center_block_valid  = [0] * 6
+
+  def self_test(self):
+    #print("Check consistency of data")
+    #load color data for corner, edge and center blocks
+    #edge has 3 visible sides, corner has 2 visible sides
+
+    #this is sorted validation data, that is derived from the original cube
+    #it hast to be identical with sorted data from any cube
+    orig_cube           = cube.tRubikCube()
+    edge_block_valid    = orig_cube.get_edge(sort=True)
+    corner_block_valid  = orig_cube.get_corner(sort=True)
+    center_block_valid  = orig_cube.get_center(sort=True)
+    
+    #sorted data from actual cube
+    edge_block = self.get_edge(sort=True)
+    center_block = self.get_center(sort=True)
+    corner_block = self.get_corner(sort=True)
 
     corner_block_test   = [False]*8
     edge_block_test     = [False]*12
     center_block_test   = [False]*6
 
-    #this is sorted validation data, that was derived from the original cube
-    #it hast to be identical with sorted data from any cube
-    corner_block_valid  = [[0, 3, 5], [0, 3, 4], [0, 2, 4], [0, 2, 5], [1, 3, 4], [1, 3, 5], [1, 2, 5], [1, 2, 4]]
-    edge_block_valid    = [[0, 3], [0, 4], [0, 2], [0, 5], [1, 3], [1, 5], [1, 2], [1, 4], [3, 4], [2, 4], [3, 5], [2, 5]]
-    center_block_valid  = [0, 1, 2, 3, 4, 5]
-
-
-    #check all edge and corner blocks
-    #each color combination from validation data has to be present
-
+    #check all center, edge and corner blocks
+    #more simple would be just compare the whole arrays
+    
+    #each color combination from validation data has to be present once
     for corner in corner_block:
       for i in range(len(corner_block_valid)):
         if corner == corner_block_valid[i]: 
@@ -1113,7 +1215,6 @@ class tRubikCube:
     if edge_block_test.count(True) != len(edge_block_test):
       return(False)
 
-
     for center in center_block:
       for i in range(len(center_block_valid)):
         if center == center_block_valid[i]: 
@@ -1125,7 +1226,22 @@ class tRubikCube:
     
     return(True)
   
+def cube_algo_check():  
+  Cube = tRubikCube()
+  console_clear()
+  Cube.print_2d()
   
+  Cube = tRubikCube()
+  Cube.solve_second_layer_edge(1, "test", 1)
+  Cube.print_2d()
+  
+  Cube = tRubikCube()
+  Cube.solve_second_layer_edge(2, "test", 1)
+  Cube.print_2d()
+  
+  input()
+  #Cube = tRubikCube()
+
 
 
 #Run Selftest on all actions
@@ -1176,7 +1292,8 @@ def cube_score_check():
   Orig_Cube = tRubikCube()
   score = Orig_Cube.score()
   print("Original Cube Score (9x6=54): %d" % score)
-  
+  Orig_Cube.print_2d()
+
   num_actions = Orig_Cube.num_actions()
   Cube_simple = tRubikCube()
   random.seed()
@@ -1258,9 +1375,10 @@ def main():
   os.system('color') 
   #increase size of console
   os.system('mode con: cols=120 lines=60')  #12*4 +1
-  cube_actions_check()
-  cube_score_check()
-  cube_benchmark()
+  cube_algo_check()
+  #cube_actions_check()
+  #cube_score_check()
+  #cube_benchmark()
 
   
 

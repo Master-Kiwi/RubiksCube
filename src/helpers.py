@@ -1,12 +1,16 @@
 #CHANGELOG: helpers.py
 #AUTHOR: SL
 
-#12.01.2020 
-#  initial version
-#  implementes helper functions with main purpose to get smarter output on console
 #  TODO: 
 #    check for terminal cursormove actions to redraw more then 1 line with \r
 #    would be nice to redraw a colored cube to watch the solution progress
+
+#11.02.2020 
+#   added: blink_line(text_line, count, blink_time)
+
+#12.01.2020 
+#  initial version
+#  implementes helper functions with main purpose to get smarter output on console
 
 
 import os
@@ -136,7 +140,22 @@ def console_print_color_table():
   #col_str_orange  = '\x1b[1;37;45m'
   #col_str_white   = '\x1b[1;37;47m'
   #col_str_end     = '\x1b[0m'
-  
+
+
+#print a line that blinks for <count> with a blink time of <blink_time> seconds
+#blink_time can be int or float.
+#blink time is applied to on and off, total_time = 2*blink_time*count
+#this is a blocking call, just intended for highlighting a imporant information
+#suggestion to use:  blink_line("Press Any Key to continue", 5, 0.25) --> blink for 2.5 sec / 5 times
+def blink_line(text_line, count, blink_time):
+  empty_line= " " * len(text_line)
+  for _ in range(count):
+    print("\r%s" % empty_line, end="")
+    time.sleep(blink_time)
+    print("\r%s" % text_line, end="")
+    time.sleep(blink_time)
+  print("")
+
 
 def main():
   if console_supports_ansi():
@@ -146,7 +165,8 @@ def main():
 
   os.system('color') 
   console_print_color_table()
-  print("Press Any Key to continue")
+  blink_line("Press Any Key to continue", 5, 0.3)
+  #print("Press Any Key to continue")
   input()
 
   num = 1

@@ -4,13 +4,21 @@
 #   TODO: 
 #     code "beautfication"
 #     bruteforce add's actions to the cube when it is solved upon start [1,1,1,]
-#     display of solution sequence in letters instead numbers
-#     grouped output of solution sequences (per step)
 #     rework step 1, without bruteforce 
 #     rework step 2, without bruteforce 
 #     unify output text of solver methods
 #     add "help" cmd to terminal
 
+#20.02.2020 
+#  changed cmd="solve"  
+#     display of solution sequence in letters instead numbers
+#     grouped output of solution sequences (per step)
+#  changed default terminal output 
+#     Moves = len(action_list)
+#     actions are in short notation text (U, U' ) instead of numbers
+#  added CONSOLE_COLS and CONSOLE_LINES, changing this variables to adapt size of console window
+#     suggestion is to use 120 / 60
+#  using blink_line() from helpers.py, needs helpers.py from 11.02.2020
 
 #11.02.2020 
 #  initial version 
@@ -18,9 +26,6 @@
 #   simple terminal with save/load/new/shuffle/solve,...
 #   solve it manual / test algos or solve it automatic
 #   testmode for continuous solving
-
-
-
 
 import os
 import time
@@ -33,9 +38,11 @@ import RubiksCube as cube
 import iterate_tools as itertools
 from helpers import console_clear, num_to_str_si, sec_to_str, blink_line
 
+CONSOLE_COLS = 120
+CONSOLE_LINES = 60
 
 def main(): 
-  os.system('mode con: cols=120 lines=60')  #12*4 +1
+  os.system("mode con: cols="+ str(CONSOLE_COLS) +"lines="+ str(CONSOLE_LINES))  #12*4 +1
   
   console_clear()
   Cube = cube.tRubikCube()
@@ -46,13 +53,19 @@ def main():
   #------load a prerotated cube-----------
   #filename = "../data/simple_cube_04.json"
   #filename = "../data/moderate_cube_08.json"
-  filename = "../data/midlayer_test.json"
+  #filename = "../data/midlayer_test.json"
+  filename = "../data/real_cube_03.json"
+  filename = "../data/real_cube_04.json"
   #filename = "../data/complex_cube_12.json"
   #filename = "../data/real_cube.json"
 
   script_dir        = os.path.dirname(__file__) #<-- absolute dir the script is in
   cube_file_path    = os.path.join(script_dir, filename)
   Cube.load_from_file(cube_file_path)  
+  result = Cube.self_test()
+  if (result == False):
+    print("!!!!Cube Data incorrect!!!!")
+
   cmd = ""
   info = ""
   edge_location = ""
@@ -63,11 +76,15 @@ def main():
     #get edge and corner position in actual Cube
     edge_location   = Cube.search_edge(orig_edge)
     corner_location = Cube.search_corner(orig_corner)
-    sequence = Cube.get_action_list()
+    sequence = Cube.get_action_list(notation="short")
+    moves = len(Cube.get_action_list())
     print("Last Command: %s (%s)" % (cmd, info))
     print("Edge   location: %s " % edge_location)
     print("Corner location: %s " % corner_location)
-    print("Actual Sequence: % s" % sequence)
+    print("Moves=%04d     : %s " % (moves, sequence))
+    #print("Actual Sequence: ")
+    #Cube.print_action_list(max_line_len=CONSOLE_COLS)
+
     Cube.print_2d()
     print(" rotate CW commands:  u/u'..upper d/d'..down r/r'..right l/l'..left f/f'..front  b/b'..back")
     print(" file commands:       reload..reload original file   save..state > progress fale  load..stat < progess file " )
@@ -145,10 +162,12 @@ def main():
     if "1" == cmd:
       print("Bruteforce solve white edges (white-cross)...")
       search_depth = 6
+      Cube.clear_action_list()
       Cube=bruteforce(Cube,search_depth,11)
       Cube=bruteforce(Cube,search_depth,12)
       Cube=bruteforce(Cube,search_depth,13)
       Cube=bruteforce(Cube,search_depth,14)
+      Cube.print_action_list(max_line_len=CONSOLE_COLS)
       Cube.print_2d()
       print("Press Enter to continue")
       input()
@@ -158,10 +177,12 @@ def main():
     if "2" == cmd:
       print("Bruteforce solve white side (white-corners)...")
       search_depth = 6
+      Cube.clear_action_list()
       Cube=bruteforce(Cube,search_depth,21)
       Cube=bruteforce(Cube,search_depth,22)
       Cube=bruteforce(Cube,search_depth,23)
       Cube=bruteforce(Cube,search_depth,24)
+      Cube.print_action_list(max_line_len=CONSOLE_COLS)
       Cube.print_2d()
       print("Press Enter to continue")
       input()
@@ -169,9 +190,11 @@ def main():
       continue
     
     if "3" == cmd:
+      Cube.clear_action_list()
       #solve each edge
       for i in range(4,8,1):
         Cube=solve_second_layer_edge(Cube, i)
+      Cube.print_action_list(max_line_len=CONSOLE_COLS)      
       Cube.print_2d()
       print("Press Enter to continue")
       input()
@@ -179,7 +202,9 @@ def main():
       continue
 
     if "4" == cmd:
+      Cube.clear_action_list()
       Cube=solve_yellow_cross(Cube)
+      Cube.print_action_list(max_line_len=CONSOLE_COLS)
       Cube.print_2d()
       print("Press Enter to continue")
       input()
@@ -187,7 +212,9 @@ def main():
       continue
 
     if "5" == cmd:
+      Cube.clear_action_list()
       Cube = solve_yellow_edge(Cube)
+      Cube.print_action_list(max_line_len=CONSOLE_COLS)
       Cube.print_2d()
       print("Press Enter to continue")
       input()
@@ -195,7 +222,9 @@ def main():
       continue
     
     if "6" == cmd:
+      Cube.clear_action_list()
       Cube = position_yellow_corner(Cube)
+      Cube.print_action_list(max_line_len=CONSOLE_COLS)
       Cube.print_2d()
       print("Press Enter to continue")
       input()
@@ -203,7 +232,9 @@ def main():
       continue
 
     if "7" == cmd:
+      Cube.clear_action_list()
       Cube = orient_last_layer_corner(Cube)
+      Cube.print_action_list(max_line_len=CONSOLE_COLS)
       Cube.print_2d()
       print("Press Enter to continue")
       input()
@@ -213,31 +244,87 @@ def main():
      
 
     if "solve" == cmd:
+      Cube.clear_action_list()
+      complete_action_list = []
+      
       print("1. Bruteforce solve white edges (white-cross)...")
+      Cube.clear_action_list()
       search_depth = 6
       Cube=bruteforce(Cube,search_depth,11)
       Cube=bruteforce(Cube,search_depth,12)
       Cube=bruteforce(Cube,search_depth,13)
       Cube=bruteforce(Cube,search_depth,14)
+      moves = len(Cube.get_action_list())
+      print("%d Moves:" % moves)    
+      Cube.print_action_list(max_line_len=CONSOLE_COLS)
+      complete_action_list += Cube.get_action_list()
+
       print("2. Bruteforce solve white side (white-corners)...")
       search_depth = 6
+      Cube.clear_action_list()
       Cube=bruteforce(Cube,search_depth,21)
       Cube=bruteforce(Cube,search_depth,22)
       Cube=bruteforce(Cube,search_depth,23)
       Cube=bruteforce(Cube,search_depth,24)
+      moves = len(Cube.get_action_list())
+      print("%d Moves:" % moves)    
+      Cube.print_action_list(max_line_len=CONSOLE_COLS)
+      complete_action_list += Cube.get_action_list()
+
+
       print("3. Solve Second layer...")
+      Cube.clear_action_list()
       for i in range(4,8,1):
         Cube=solve_second_layer_edge(Cube, i)
+      moves = len(Cube.get_action_list())
+      print("%d Moves:" % moves)    
+      Cube.print_action_list(max_line_len=CONSOLE_COLS)
+      complete_action_list += Cube.get_action_list()
+
       print("4. Solve yellow cross...")
+      Cube.clear_action_list()
       Cube=solve_yellow_cross(Cube)  
+      moves = len(Cube.get_action_list())
+      print("%d Moves:" % moves)    
+      Cube.print_action_list(max_line_len=CONSOLE_COLS)
+      complete_action_list += Cube.get_action_list()
+
       print("5. Solve yellow edge...")
+      Cube.clear_action_list()
       Cube = solve_yellow_edge(Cube)
+      moves = len(Cube.get_action_list())
+      print("%d Moves:" % moves)    
+      Cube.print_action_list(max_line_len=CONSOLE_COLS)
+      complete_action_list += Cube.get_action_list()
+
       print("6. Position yellow corner...")
+      Cube.clear_action_list()
       Cube = position_yellow_corner(Cube)
+      moves = len(Cube.get_action_list())
+      print("%d Moves:" % moves)    
+      Cube.print_action_list(max_line_len=CONSOLE_COLS)
+      complete_action_list += Cube.get_action_list()
+
       print("7. Orient Last layer yellow corner...")
+      Cube.clear_action_list()
       Cube = orient_last_layer_corner(Cube)
-      Cube.print_2d()
-      print("Press Enter to continue")
+      moves = len(Cube.get_action_list())
+      print("%d Moves:" % moves)    
+      Cube.print_action_list(max_line_len=CONSOLE_COLS)
+      complete_action_list += Cube.get_action_list()
+
+      Cube.clear_action_list()
+      Cube.actions_list = complete_action_list
+
+      #Save Solution to File
+      solution_filename = filename[:-5] + "_solved.json"
+      solution_cube_file_path    = os.path.join(script_dir, solution_filename)
+      print("Save Solution to File: {}" .format(solution_filename))
+      Cube.save_to_file(solution_cube_file_path)  
+
+      moves = len(Cube.get_action_list())
+      #Cube.print_2d()
+      blink_line("Defeated Rubik's Cube in {} moves" .format(str(moves)), 5, 0.25)
       input()
       console_clear()
       continue
@@ -274,18 +361,22 @@ def main():
         Cube = position_yellow_corner(Cube)
         Cube = orient_last_layer_corner(Cube)
         Cube.print_2d()
-        blink_line("Defeated Rubik's Cube", 5, 0.25)
+        Cube.print_action_list(max_line_len=CONSOLE_COLS)
+
+        moves = len(Cube.get_action_list())
+        blink_line("Defeated Rubik's Cube in {} moves" .format(str(moves)), 5, 0.25)
+        Cube.clear_action_list()
       
 
 
     if "31" == cmd:
-      Cube.swap_second_layer_edge(SIDE_IDX_RIGHT,"right",1)  #right edge on right side = edge #0 +4
+      Cube.swap_second_layer_edge(cube.SIDE_IDX_RIGHT,"right",1)  #right edge on right side = edge #0 +4
     if "32" == cmd:
-      Cube.swap_second_layer_edge(SIDE_IDX_FRONT,"right",1)  #right edge on front side = edge #1 +4
+      Cube.swap_second_layer_edge(cube.SIDE_IDX_FRONT,"right",1)  #right edge on front side = edge #1 +4
     if "33" == cmd:
-      Cube.swap_second_layer_edge(SIDE_IDX_LEFT,"right",1)   #right edge on left side = edge #2 +4
+      Cube.swap_second_layer_edge(cube.SIDE_IDX_LEFT,"right",1)   #right edge on left side = edge #2 +4
     if "34" == cmd:
-      Cube.swap_second_layer_edge(SIDE_IDX_BACK,"right",1)   #right edge on back side = edge #3 +4
+      Cube.swap_second_layer_edge(cube.SIDE_IDX_BACK,"right",1)   #right edge on back side = edge #3 +4
     
     if "41" == cmd:
       Cube.position_yellow_edge(0)   #call on dot and line
@@ -416,19 +507,19 @@ def bruteforce(Cube, itv_deep, solution):
       #this is very short sequence can be bruteforced, no need to use the algo rot_white_edge()
       if solution == 11:
         if edge_block[:1] == orig_edge[:1]:
-          print("Edge 0 solved")
+          #print("Edge 0 solved")
           return deepcopy(Test) 
       if solution == 12:
         if edge_block[:2] == orig_edge[:2]:
-          print("Edge 0/1 solved")
+          #print("Edge 0/1 solved")
           return deepcopy(Test) 
       if solution == 13:
         if edge_block[:3] == orig_edge[:3]:
-          print("Edge 0/1/2 solved")
+          #print("Edge 0/1/2 solved")
           return deepcopy(Test) 
       if solution == 14:
         if edge_block[:4] == orig_edge[:4]:
-          print("Edge 0/1/2/3 solved")
+          #print("Edge 0/1/2/3 solved")
           return deepcopy(Test) 
         
       
@@ -439,61 +530,61 @@ def bruteforce(Cube, itv_deep, solution):
         if edge_block[:4] == actual_edge[:4]:
           #maybe it is solved here
           if corner_block[:1] ==  orig_corner[:1]:
-            print("Corner 0 solved")
+            #print("Corner 0 solved")
             return deepcopy(Test)
           #try edge rotation algo with 1/3/5
           for i in range(1,6,2):
             edge_rotate = deepcopy(Test) 
-            edge_rotate.rot_white_corner(SIDE_IDX_LEFT, i)
+            edge_rotate.rot_white_corner(cube.SIDE_IDX_LEFT, i)
             corner_block = edge_rotate.get_corner()
             if corner_block[:1] ==  orig_corner[:1]:
-                print("Corner 0 solved")
+                #print("Corner 0 solved")
                 return deepcopy(edge_rotate)
 
       if solution == 22:
         if edge_block[:4] == actual_edge[:4]:
           #maybe it is solved here
           if corner_block[:2] ==  orig_corner[:2]:
-            print("Corner 0/1 solved")
+            #print("Corner 0/1 solved")
             return deepcopy(Test)
           #try edge rotation algo with 1/3/5
           for i in range(1,6,2):
             edge_rotate = deepcopy(Test) 
-            edge_rotate.rot_white_corner(SIDE_IDX_BACK, i)
+            edge_rotate.rot_white_corner(cube.SIDE_IDX_BACK, i)
             corner_block = edge_rotate.get_corner()
             if corner_block[:2] ==  orig_corner[:2]:
-                print("Corner 0/1 solved")
+                #print("Corner 0/1 solved")
                 return deepcopy(edge_rotate)
       
       if solution == 23:
         if edge_block[:4] == actual_edge[:4]:
           #maybe it is solved here
           if corner_block[:3] ==  orig_corner[:3]:
-            print("Corner 0/1/2 solved")
+            #print("Corner 0/1/2 solved")
             return deepcopy(Test)
           #try edge rotation algo with 1/3/5
           for i in range(1,6,2):
             edge_rotate = deepcopy(Test) 
-            edge_rotate.rot_white_corner(SIDE_IDX_RIGHT, i)
+            edge_rotate.rot_white_corner(cube.SIDE_IDX_RIGHT, i)
             corner_block = edge_rotate.get_corner()
             if corner_block[:3] ==  orig_corner[:3]:
-                print("Corner 0/1/2 solved")
-                return deepcopy(edge_rotate)
+              #print("Corner 0/1/2 solved")
+              return deepcopy(edge_rotate)
 
       if solution == 24:
         if edge_block[:4] == actual_edge[:4]:
           #maybe it is solved here
           if corner_block[:4] ==  orig_corner[:4]:
-            print("Corner 0/1/2 solved")
+            #print("Corner 0/1/2 solved")
             return deepcopy(Test)
           #try edge rotation algo with 1/3/5 repetitions
           for i in range(1,6,2):
             edge_rotate = deepcopy(Test) 
-            edge_rotate.rot_white_corner(SIDE_IDX_FRONT, i)
+            edge_rotate.rot_white_corner(cube.SIDE_IDX_FRONT, i)
             corner_block = edge_rotate.get_corner()
             if corner_block[:4] ==  orig_corner[:4]:
-                print("Corner 0/1/2/3 solved")
-                return deepcopy(edge_rotate)
+              #print("Corner 0/1/2/3 solved")
+              return deepcopy(edge_rotate)
 
   #no solution found
   return None 
@@ -509,7 +600,7 @@ def solve_second_layer_edge(Cube, edge_num):
   target_edge = orig_cube.get_edge(edge_num, sort=False)
 
 
-  print("<<<<Solve Second layer Edge e%02d>>>>" %edge_num)
+  #print("<<<<Solve Second layer Edge e%02d>>>>" %edge_num)
   _edge_location   = Cube.search_edge(orig_edge)
   #print(" All Edge location: %s " % _edge_location)
   edge_location = Cube.search_edge(orig_edge[edge_num])
@@ -520,10 +611,10 @@ def solve_second_layer_edge(Cube, edge_num):
     return
 
   map_edge_num_to_side_right_algo = {
-    4 : SIDE_IDX_RIGHT,   #right edge on right side = edge #0 +4
-    5 : SIDE_IDX_FRONT,
-    6 : SIDE_IDX_LEFT,
-    7 : SIDE_IDX_BACK
+    4 : cube.SIDE_IDX_RIGHT,   #right edge on right side = edge #0 +4
+    5 : cube.SIDE_IDX_FRONT,
+    6 : cube.SIDE_IDX_LEFT,
+    7 : cube.SIDE_IDX_BACK
     }
      
   #edge is in 2nd layer but on wrong spot, turn it on 3rd layer by applying "swap" once
@@ -604,7 +695,7 @@ def solve_yellow_cross(Cube):
     yellow_edge[2] = Cube.get_edge(10)[0]==color_yellow_idx
     yellow_edge[3] = Cube.get_edge(11)[0]==color_yellow_idx
     if(yellow_edge == solved): 
-      print("Yellow Cross already solved")
+      #print("Yellow Cross already solved")
       break
 
     algo = 0
@@ -619,7 +710,7 @@ def solve_yellow_cross(Cube):
       #print("%s" % (yellow_edge))
 
       if(yellow_edge == solved): 
-        print("Yellow Cross Solved (%d algos)" % cnt)
+        #print("Yellow Cross Solved (%d algos)" % cnt)
         #Cube.print_2d()
         break
       #we call both algos in changing order, this will solve each cube within 5 loops
@@ -683,7 +774,7 @@ def solve_yellow_edge(Cube):
     print("e%02d unsolveable" %edge_num)
     return
 
-  print("<<<<Solve 3rd layer Edge e%02d>>>>" %edge_num)
+  #print("<<<<Solve 3rd layer Edge e%02d>>>>" %edge_num)
   for i in range (4):
     test_cube = deepcopy(Cube)
     #rotate down-side CW, 0x, 1x, 2x 3x times (3x equals to CCW)
@@ -706,7 +797,7 @@ def solve_yellow_edge(Cube):
   if(edge_location < 8): 
     print("e%02d unsolveable" %edge_num)
     return
-  print("<<<<Solve 3rd layer Edge e%02d>>>>" %edge_num)
+  #print("<<<<Solve 3rd layer Edge e%02d>>>>" %edge_num)
   #can be 9, 10, or 11
   #9 is at 10 is a simple swap
   if (edge_location == 10):
@@ -729,7 +820,7 @@ def solve_yellow_edge(Cube):
   if(edge_location < 8): 
     print("e%02d unsolveable" %edge_num)
     return
-  print("<<<<Solve 3rd layer Edge e%02d>>>>" %edge_num)
+  #print("<<<<Solve 3rd layer Edge e%02d>>>>" %edge_num)
   #can be 10 or 11, simple swap, will only be 11 if e9 was at 10
   if (edge_location == 11):
     Cube.swap_yellow_edge(0)
@@ -837,10 +928,10 @@ def orient_last_layer_corner(Cube):
 
   #now corner num points to the first misplaced corner
   algo_num = corner_num - 4 
-  print(" %d Wrong corners,  Start at c%02d, use algo num: %d " % (wrong_corners, corner_num, algo_num))
+  #print(" %d Wrong corners,  Start at c%02d, use algo num: %d " % (wrong_corners, corner_num, algo_num))
 
   while True:
-    print(" Orient Last Layer corner...")
+    #print(" Orient Last Layer corner...")
     #apply algo up to 2 times - with 2 repetitions
     while True:
       actual_corner = Cube.get_corner(corner_num)[0]==color_yellow_idx
@@ -858,7 +949,7 @@ def orient_last_layer_corner(Cube):
     if(solved == yellow_corner): 
       break;
     wrong_corners = yellow_corner.count(False)
-    print(" %d Wrong corners" % wrong_corners)
+    #print(" %d Wrong corners" % wrong_corners)
 
     #there are still wrong corners - rotate cube until next wrong corner is in spot
     while True:

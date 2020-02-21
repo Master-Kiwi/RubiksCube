@@ -10,15 +10,30 @@
 #  test this new scoring
 #  unify algo methods, maybe create a dict for all algos and use a single method to call
 #     move algos to new file "Rubiks_Cube_algos.py"?
-#  add method for printing sequences in letters instead of numbers (R / R')
-#  print letter sequence also to file additional to numbers
+#  add metrics (actual is quarter-turn), add half-turn (maybe decide with constructor what metric to use)
+#optional:
+#  add some functions to create .png or .jpg files of cube states
+
+
+#20.02.2020 
 #  unify notation, change TOP/BOT to UP/DOWN. this is common notation on internet and also less sensitive to errors
 #     actions-shortcuts are in this case UNIQUE single letters with this notation
 #     BOT/BACK > new notation: D(down) / B(back)
-#  add metrics (actual is quarter-turn), add half-turn (maybe decide with constructor what metric to use)
-
-#optional:
-#  add some functions to create .png or .jpg files of cube states
+#  updated: get_action_list(notation=""):     
+#     new optional parameter notation may be "numbers", "short" or long
+#     with no parameter it returns action list with numbers
+#     with short you get a list of strings in short notatation (U, U',...), according to action_dict_short
+#     with long you get a list of strings in long notation (ROTATE_UP_CW, ...), according to action_dict_long
+#  updated: save_to_file(self, filename):     
+#     cube values are now exported as text instead of numbers ("white",...)
+#     print letter sequence also to file additional to numbers
+#  updated: load_from_file(self, filename): 
+#     cube values are now imported as text instead of numbers, matching to save_to_file()
+#  added:   print_action_list(self, max_line_len=100):      
+#     method for printing sequences in letters instead of numbers (R / R')
+#     print a good readable action list in short notation U / U'
+#     specify max_line_len according to console_cols to prevent from bad readable result, will insert a newline when reaching max_line_len
+  
 
 #11.02.2020 
 #  solved: "implement print function to visualize edge/corner, maybe print_2d_ext() that outputs the corner / edges right beside the cube" from TODO
@@ -92,8 +107,8 @@ from copy import copy, deepcopy
 import random
 from helpers import console_clear
 
-SIDE_IDX_TOP    = 0
-SIDE_IDX_BOT    = 1
+SIDE_IDX_UP     = 0
+SIDE_IDX_DOWN   = 1
 SIDE_IDX_FRONT  = 2
 SIDE_IDX_BACK   = 3
 SIDE_IDX_LEFT   = 4
@@ -120,14 +135,16 @@ TURN_DIR_LEFT_TO_FRONT = 5    #axis = Z
 TURN_DIR_RIGHT_TO_FRONT= 6
 
 #color format strings, check them using console_print_color_table() from helpers.py
-#col_str_black   = '\x1b[1;37;40m'     #for test use 1;37;46m
-col_str_black   = '\x1b[1;37;46m'     #for test use 1;37;46m
+col_str_black   = '\x1b[1;37;40m'     #for test use 1;37;46m
+#col_str_black   = '\x1b[1;37;46m'     #for test use 1;37;46m
 col_str_red     = '\x1b[1;37;41m'
 col_str_green   = '\x1b[1;37;42m'
 col_str_yellow  = '\x1b[1;37;43m'
 col_str_blue    = '\x1b[1;37;44m'
 col_str_orange  = '\x1b[1;37;45m'
+col_str_light_blue   = '\x1b[1;37;46m'     #for test use 1;37;46m
 col_str_white   = '\x1b[1;37;47m'
+
 col_str_end     = '\x1b[0m'
 
 #just for print2d, us a dict
@@ -145,10 +162,10 @@ col_fmt_str = {
 
 #self.action_dict lists all possible actions, key=action_idx
 action_dict = { 
-  0: "ROTATE TOP / CW",
-  6: "ROTATE TOP / CCW",
-  1: "ROTATE BOT / CW",
-  7: "ROTATE BOT / CCW",
+  0: "ROTATE UP / CW",
+  6: "ROTATE UP / CCW",
+  1: "ROTATE DOWN / CW",
+  7: "ROTATE DOWN / CCW",
   2: "ROTATE LEFT / CW",
   8: "ROTATE LEFT / CCW",  
   3: "ROTATE RIGHT / CW",
@@ -157,6 +174,22 @@ action_dict = {
   10:"ROTATE FRONT / CCW",
   5: "ROTATE BACK / CW",
   11:"ROTATE BACK / CCW"
+}
+
+#self.action_dict lists all possible actions, key=action_idx
+action_dict_short = { 
+  0: "U ",
+  6: "U'",
+  1: "D ",
+  7: "D'",
+  2: "L ",
+  8: "L'",  
+  3: "R ",
+  9: "R'",
+  4: "F ",
+  10:"F'",
+  5: "B ",
+  11:"B'"
 }
 #key=color index
 color_dict = {
@@ -169,8 +202,8 @@ color_dict = {
 }
 #key=side index
 side_dict = {
-  SIDE_IDX_TOP    : "top",
-  SIDE_IDX_BOT    : "bot",
+  SIDE_IDX_UP     : "up",
+  SIDE_IDX_DOWN   : "down",
   SIDE_IDX_FRONT  : "front",
   SIDE_IDX_BACK   : "back",
   SIDE_IDX_LEFT   : "left",
@@ -192,30 +225,28 @@ class tRubikCube:
     #set initial state of cube = solved cube
     #opposite sides
     self.col = np.zeros([6,self.N_DIM,self.N_DIM], dtype=int)
-    self.col[SIDE_IDX_TOP]    = COL_IDX_WHITE
-    self.col[SIDE_IDX_BOT]    = COL_IDX_YELLOW
+    self.col[SIDE_IDX_UP]    = COL_IDX_WHITE
+    self.col[SIDE_IDX_DOWN]    = COL_IDX_YELLOW
     self.col[SIDE_IDX_FRONT]  = COL_IDX_ORANGE
     self.col[SIDE_IDX_BACK]   = COL_IDX_RED  
     self.col[SIDE_IDX_LEFT]   = COL_IDX_BLUE
     self.col[SIDE_IDX_RIGHT]  = COL_IDX_GREEN
-    
-    #self.col[SIDE_IDX_LEFT][0][0]  = COL_IDX_RED
-    #self.col[SIDE_IDX_RIGHT][0][0]  = COL_IDX_RED
-    #self.col[SIDE_IDX_TOP][0][0]  = COL_IDX_GREEN
-    #self.col[SIDE_IDX_BOT][0][0]  = COL_IDX_GREEN
-    #self.col[SIDE_IDX_BACK][0][0]  = COL_IDX_WHITE
-    #self.col[SIDE_IDX_FRONT][0][0]  = COL_IDX_WHITE
 
-  
   #for colored console output, prints <num_blocks> spaces with col_idx as fg/bg/style
   #looks like large colored pixels
   #changed to read from dict
   def _print_blocks(self, col_idx, num_blocks):
-    print(col_fmt_str[col_idx] + (' '*num_blocks) + col_fmt_str[COL_IDX_END], sep='', end='')
+    if(col_idx == -1):
+      print(col_str_light_blue + (' '*num_blocks) + col_fmt_str[COL_IDX_END], sep='', end='')
+    else:
+      print(col_fmt_str[col_idx] + (' '*num_blocks) + col_fmt_str[COL_IDX_END], sep='', end='')
   #for colored console output, prints text spaces with col_idx as fg/bg
   #pay attention that fg color is set correct in the col_idx strings
   def _print_col_text(self, col_idx, col_text):
-    print(col_fmt_str[col_idx] + col_text + col_fmt_str[COL_IDX_END], sep='', end='')
+    if(col_idx == -1):
+      print(col_str_light_blue + (' '*num_blocks) + col_fmt_str[COL_IDX_END], sep='', end='')
+    else:
+      print(col_fmt_str[col_idx] + col_text + col_fmt_str[COL_IDX_END], sep='', end='')
   
   #print additional information edges and colors, called from print_2d() only, but may be called individually
   def _print_ext_info(self, edge_block, corner_block, num):
@@ -270,7 +301,7 @@ class tRubikCube:
       
       self._print_blocks(COL_IDX_BLACK, ilen)
       for j in range (self.N_DIM):
-        self._print_blocks(self.col[SIDE_IDX_TOP][i][j], ilen)
+        self._print_blocks(self.col[SIDE_IDX_UP][i][j], ilen)
       
       self._print_blocks(COL_IDX_BLACK, ilen)      
       for j in range (self.N_DIM):
@@ -278,7 +309,7 @@ class tRubikCube:
       
       self._print_blocks(COL_IDX_BLACK, ilen)
       for j in range (self.N_DIM):
-        self._print_blocks(self.col[SIDE_IDX_BOT][i][j], ilen)
+        self._print_blocks(self.col[SIDE_IDX_DOWN][i][j], ilen)
 
       self._print_blocks(COL_IDX_BLACK, ilen*3)   #fill last row
       self._print_ext_info(edge_block[i+4], corner_block[i+4], i+4)
@@ -300,7 +331,8 @@ class tRubikCube:
     self._print_ext_info(edge_block[11], None, 11)
     print('', end='\n')
 
-  
+
+
   def _rotate_side(self, side_idx, rotate_dir=ROT_DIR_CW):   
     #np.rot90(<array>, 1) rotates array by 90 degrees in CCW
     #to have -90degrees we just rotate 3-times, what means a CW rotation
@@ -354,7 +386,7 @@ class tRubikCube:
   def rotate_simple(self, side_idx, rotate_dir=ROT_DIR_CW):
     #rotate the main side, just a array rotatation
     self._rotate_side(side_idx, rotate_dir)
-    if side_idx == SIDE_IDX_TOP: 
+    if side_idx == SIDE_IDX_UP: 
       mem_side_back = self.col[SIDE_IDX_BACK][2].copy()
       #if rotate_dir == ROT_DIR_CW:    #0 slower!
       #  i=0
@@ -392,7 +424,7 @@ class tRubikCube:
         self.col[SIDE_IDX_LEFT][0][2]   = mem_side_back[2] 
         self.col[SIDE_IDX_LEFT][1][2]   = mem_side_back[1] 
         self.col[SIDE_IDX_LEFT][2][2]   = mem_side_back[0] 
-    elif side_idx == SIDE_IDX_BOT: 
+    elif side_idx == SIDE_IDX_DOWN: 
       mem_side_back = self.col[SIDE_IDX_BACK][0].copy()
       if rotate_dir:    #1
         self.col[SIDE_IDX_BACK][0][2]   = self.col[SIDE_IDX_RIGHT][2][2] 
@@ -426,130 +458,130 @@ class tRubikCube:
       mem_side_back[1] = self.col[SIDE_IDX_BACK][1][0]
       mem_side_back[2] = self.col[SIDE_IDX_BACK][2][0]
       if rotate_dir:    #2
-        self.col[SIDE_IDX_BACK][0][0]   = self.col[SIDE_IDX_BOT][2][2] 
-        self.col[SIDE_IDX_BACK][1][0]   = self.col[SIDE_IDX_BOT][1][2]
-        self.col[SIDE_IDX_BACK][2][0]   = self.col[SIDE_IDX_BOT][0][2]
-        self.col[SIDE_IDX_BOT][0][2]    = self.col[SIDE_IDX_FRONT][2][0] 
-        self.col[SIDE_IDX_BOT][1][2]    = self.col[SIDE_IDX_FRONT][1][0] 
-        self.col[SIDE_IDX_BOT][2][2]    = self.col[SIDE_IDX_FRONT][0][0] 
-        self.col[SIDE_IDX_FRONT][0][0]  = self.col[SIDE_IDX_TOP][0][0]
-        self.col[SIDE_IDX_FRONT][1][0]  = self.col[SIDE_IDX_TOP][1][0]
-        self.col[SIDE_IDX_FRONT][2][0]  = self.col[SIDE_IDX_TOP][2][0]
-        self.col[SIDE_IDX_TOP][0][0]    = mem_side_back[0] 
-        self.col[SIDE_IDX_TOP][1][0]    = mem_side_back[1]
-        self.col[SIDE_IDX_TOP][2][0]    = mem_side_back[2]
+        self.col[SIDE_IDX_BACK][0][0]   = self.col[SIDE_IDX_DOWN][2][2] 
+        self.col[SIDE_IDX_BACK][1][0]   = self.col[SIDE_IDX_DOWN][1][2]
+        self.col[SIDE_IDX_BACK][2][0]   = self.col[SIDE_IDX_DOWN][0][2]
+        self.col[SIDE_IDX_DOWN][0][2]    = self.col[SIDE_IDX_FRONT][2][0] 
+        self.col[SIDE_IDX_DOWN][1][2]    = self.col[SIDE_IDX_FRONT][1][0] 
+        self.col[SIDE_IDX_DOWN][2][2]    = self.col[SIDE_IDX_FRONT][0][0] 
+        self.col[SIDE_IDX_FRONT][0][0]  = self.col[SIDE_IDX_UP][0][0]
+        self.col[SIDE_IDX_FRONT][1][0]  = self.col[SIDE_IDX_UP][1][0]
+        self.col[SIDE_IDX_FRONT][2][0]  = self.col[SIDE_IDX_UP][2][0]
+        self.col[SIDE_IDX_UP][0][0]    = mem_side_back[0] 
+        self.col[SIDE_IDX_UP][1][0]    = mem_side_back[1]
+        self.col[SIDE_IDX_UP][2][0]    = mem_side_back[2]
       else:   #8
-        self.col[SIDE_IDX_BACK][0][0]   = self.col[SIDE_IDX_TOP][0][0] 
-        self.col[SIDE_IDX_BACK][1][0]   = self.col[SIDE_IDX_TOP][1][0]
-        self.col[SIDE_IDX_BACK][2][0]   = self.col[SIDE_IDX_TOP][2][0]
-        self.col[SIDE_IDX_TOP][0][0]    = self.col[SIDE_IDX_FRONT][0][0] 
-        self.col[SIDE_IDX_TOP][1][0]    = self.col[SIDE_IDX_FRONT][1][0] 
-        self.col[SIDE_IDX_TOP][2][0]    = self.col[SIDE_IDX_FRONT][2][0] 
-        self.col[SIDE_IDX_FRONT][0][0]  = self.col[SIDE_IDX_BOT][2][2]
-        self.col[SIDE_IDX_FRONT][1][0]  = self.col[SIDE_IDX_BOT][1][2]
-        self.col[SIDE_IDX_FRONT][2][0]  = self.col[SIDE_IDX_BOT][0][2]
-        self.col[SIDE_IDX_BOT][2][2]    = mem_side_back[0] 
-        self.col[SIDE_IDX_BOT][1][2]    = mem_side_back[1]
-        self.col[SIDE_IDX_BOT][0][2]    = mem_side_back[2]
+        self.col[SIDE_IDX_BACK][0][0]   = self.col[SIDE_IDX_UP][0][0] 
+        self.col[SIDE_IDX_BACK][1][0]   = self.col[SIDE_IDX_UP][1][0]
+        self.col[SIDE_IDX_BACK][2][0]   = self.col[SIDE_IDX_UP][2][0]
+        self.col[SIDE_IDX_UP][0][0]    = self.col[SIDE_IDX_FRONT][0][0] 
+        self.col[SIDE_IDX_UP][1][0]    = self.col[SIDE_IDX_FRONT][1][0] 
+        self.col[SIDE_IDX_UP][2][0]    = self.col[SIDE_IDX_FRONT][2][0] 
+        self.col[SIDE_IDX_FRONT][0][0]  = self.col[SIDE_IDX_DOWN][2][2]
+        self.col[SIDE_IDX_FRONT][1][0]  = self.col[SIDE_IDX_DOWN][1][2]
+        self.col[SIDE_IDX_FRONT][2][0]  = self.col[SIDE_IDX_DOWN][0][2]
+        self.col[SIDE_IDX_DOWN][2][2]    = mem_side_back[0] 
+        self.col[SIDE_IDX_DOWN][1][2]    = mem_side_back[1]
+        self.col[SIDE_IDX_DOWN][0][2]    = mem_side_back[2]
     elif side_idx == SIDE_IDX_RIGHT:
       mem_side_back = [0] * 3
       mem_side_back[0] = self.col[SIDE_IDX_BACK][2][2]
       mem_side_back[1] = self.col[SIDE_IDX_BACK][1][2]
       mem_side_back[2] = self.col[SIDE_IDX_BACK][0][2]
       if rotate_dir:    #3
-        self.col[SIDE_IDX_BACK][2][2]   = self.col[SIDE_IDX_TOP][2][2] 
-        self.col[SIDE_IDX_BACK][1][2]   = self.col[SIDE_IDX_TOP][1][2]
-        self.col[SIDE_IDX_BACK][0][2]   = self.col[SIDE_IDX_TOP][0][2]
-        self.col[SIDE_IDX_TOP][2][2]    = self.col[SIDE_IDX_FRONT][2][2] 
-        self.col[SIDE_IDX_TOP][1][2]    = self.col[SIDE_IDX_FRONT][1][2] 
-        self.col[SIDE_IDX_TOP][0][2]    = self.col[SIDE_IDX_FRONT][0][2] 
-        self.col[SIDE_IDX_FRONT][0][2]  = self.col[SIDE_IDX_BOT][2][0]
-        self.col[SIDE_IDX_FRONT][1][2]  = self.col[SIDE_IDX_BOT][1][0]
-        self.col[SIDE_IDX_FRONT][2][2]  = self.col[SIDE_IDX_BOT][0][0]
-        self.col[SIDE_IDX_BOT][0][0]    = mem_side_back[0] 
-        self.col[SIDE_IDX_BOT][1][0]    = mem_side_back[1]
-        self.col[SIDE_IDX_BOT][2][0]    = mem_side_back[2]
+        self.col[SIDE_IDX_BACK][2][2]   = self.col[SIDE_IDX_UP][2][2] 
+        self.col[SIDE_IDX_BACK][1][2]   = self.col[SIDE_IDX_UP][1][2]
+        self.col[SIDE_IDX_BACK][0][2]   = self.col[SIDE_IDX_UP][0][2]
+        self.col[SIDE_IDX_UP][2][2]    = self.col[SIDE_IDX_FRONT][2][2] 
+        self.col[SIDE_IDX_UP][1][2]    = self.col[SIDE_IDX_FRONT][1][2] 
+        self.col[SIDE_IDX_UP][0][2]    = self.col[SIDE_IDX_FRONT][0][2] 
+        self.col[SIDE_IDX_FRONT][0][2]  = self.col[SIDE_IDX_DOWN][2][0]
+        self.col[SIDE_IDX_FRONT][1][2]  = self.col[SIDE_IDX_DOWN][1][0]
+        self.col[SIDE_IDX_FRONT][2][2]  = self.col[SIDE_IDX_DOWN][0][0]
+        self.col[SIDE_IDX_DOWN][0][0]    = mem_side_back[0] 
+        self.col[SIDE_IDX_DOWN][1][0]    = mem_side_back[1]
+        self.col[SIDE_IDX_DOWN][2][0]    = mem_side_back[2]
       else:    #9
-        self.col[SIDE_IDX_BACK][2][2]   = self.col[SIDE_IDX_BOT][0][0] 
-        self.col[SIDE_IDX_BACK][1][2]   = self.col[SIDE_IDX_BOT][1][0]
-        self.col[SIDE_IDX_BACK][0][2]   = self.col[SIDE_IDX_BOT][2][0]
-        self.col[SIDE_IDX_BOT][0][0]    = self.col[SIDE_IDX_FRONT][2][2] 
-        self.col[SIDE_IDX_BOT][1][0]    = self.col[SIDE_IDX_FRONT][1][2] 
-        self.col[SIDE_IDX_BOT][2][0]    = self.col[SIDE_IDX_FRONT][0][2] 
-        self.col[SIDE_IDX_FRONT][0][2]  = self.col[SIDE_IDX_TOP][0][2]
-        self.col[SIDE_IDX_FRONT][1][2]  = self.col[SIDE_IDX_TOP][1][2]
-        self.col[SIDE_IDX_FRONT][2][2]  = self.col[SIDE_IDX_TOP][2][2]
-        self.col[SIDE_IDX_TOP][2][2]    = mem_side_back[0] 
-        self.col[SIDE_IDX_TOP][1][2]    = mem_side_back[1]
-        self.col[SIDE_IDX_TOP][0][2]    = mem_side_back[2]
+        self.col[SIDE_IDX_BACK][2][2]   = self.col[SIDE_IDX_DOWN][0][0] 
+        self.col[SIDE_IDX_BACK][1][2]   = self.col[SIDE_IDX_DOWN][1][0]
+        self.col[SIDE_IDX_BACK][0][2]   = self.col[SIDE_IDX_DOWN][2][0]
+        self.col[SIDE_IDX_DOWN][0][0]    = self.col[SIDE_IDX_FRONT][2][2] 
+        self.col[SIDE_IDX_DOWN][1][0]    = self.col[SIDE_IDX_FRONT][1][2] 
+        self.col[SIDE_IDX_DOWN][2][0]    = self.col[SIDE_IDX_FRONT][0][2] 
+        self.col[SIDE_IDX_FRONT][0][2]  = self.col[SIDE_IDX_UP][0][2]
+        self.col[SIDE_IDX_FRONT][1][2]  = self.col[SIDE_IDX_UP][1][2]
+        self.col[SIDE_IDX_FRONT][2][2]  = self.col[SIDE_IDX_UP][2][2]
+        self.col[SIDE_IDX_UP][2][2]    = mem_side_back[0] 
+        self.col[SIDE_IDX_UP][1][2]    = mem_side_back[1]
+        self.col[SIDE_IDX_UP][0][2]    = mem_side_back[2]
     elif side_idx == SIDE_IDX_FRONT:
-      mem_side_top = self.col[SIDE_IDX_TOP][2].copy()
+      mem_side_top = self.col[SIDE_IDX_UP][2].copy()
       if rotate_dir:    #4
-        #self.col[SIDE_IDX_TOP][2][0]    = self.col[SIDE_IDX_LEFT][2][0]
-        #self.col[SIDE_IDX_TOP][2][1]    = self.col[SIDE_IDX_LEFT][2][1]
-        #self.col[SIDE_IDX_TOP][2][2]    = self.col[SIDE_IDX_LEFT][2][2]
-        self.col[SIDE_IDX_TOP][2]       = self.col[SIDE_IDX_LEFT][2]
-        #self.col[SIDE_IDX_LEFT][2][0]   = self.col[SIDE_IDX_BOT][2][0]
-        #self.col[SIDE_IDX_LEFT][2][1]   = self.col[SIDE_IDX_BOT][2][1]
-        #self.col[SIDE_IDX_LEFT][2][2]   = self.col[SIDE_IDX_BOT][2][2]
-        self.col[SIDE_IDX_LEFT][2]      = self.col[SIDE_IDX_BOT][2]
-        #self.col[SIDE_IDX_BOT][2][0]    = self.col[SIDE_IDX_RIGHT][2][0]
-        #self.col[SIDE_IDX_BOT][2][1]    = self.col[SIDE_IDX_RIGHT][2][1]
-        #self.col[SIDE_IDX_BOT][2][2]    = self.col[SIDE_IDX_RIGHT][2][2]
-        self.col[SIDE_IDX_BOT][2]       = self.col[SIDE_IDX_RIGHT][2]
+        #self.col[SIDE_IDX_UP][2][0]    = self.col[SIDE_IDX_LEFT][2][0]
+        #self.col[SIDE_IDX_UP][2][1]    = self.col[SIDE_IDX_LEFT][2][1]
+        #self.col[SIDE_IDX_UP][2][2]    = self.col[SIDE_IDX_LEFT][2][2]
+        self.col[SIDE_IDX_UP][2]       = self.col[SIDE_IDX_LEFT][2]
+        #self.col[SIDE_IDX_LEFT][2][0]   = self.col[SIDE_IDX_DOWN][2][0]
+        #self.col[SIDE_IDX_LEFT][2][1]   = self.col[SIDE_IDX_DOWN][2][1]
+        #self.col[SIDE_IDX_LEFT][2][2]   = self.col[SIDE_IDX_DOWN][2][2]
+        self.col[SIDE_IDX_LEFT][2]      = self.col[SIDE_IDX_DOWN][2]
+        #self.col[SIDE_IDX_DOWN][2][0]    = self.col[SIDE_IDX_RIGHT][2][0]
+        #self.col[SIDE_IDX_DOWN][2][1]    = self.col[SIDE_IDX_RIGHT][2][1]
+        #self.col[SIDE_IDX_DOWN][2][2]    = self.col[SIDE_IDX_RIGHT][2][2]
+        self.col[SIDE_IDX_DOWN][2]       = self.col[SIDE_IDX_RIGHT][2]
         #self.col[SIDE_IDX_RIGHT][2][0]  = mem_side_top[0]
         #self.col[SIDE_IDX_RIGHT][2][1]  = mem_side_top[1]
         #self.col[SIDE_IDX_RIGHT][2][2]  = mem_side_top[2]
         self.col[SIDE_IDX_RIGHT][2]     = mem_side_top
       else:    #10
-        #self.col[SIDE_IDX_TOP][2][0]    = self.col[SIDE_IDX_RIGHT][2][0]
-        #self.col[SIDE_IDX_TOP][2][1]    = self.col[SIDE_IDX_RIGHT][2][1]
-        #self.col[SIDE_IDX_TOP][2][2]    = self.col[SIDE_IDX_RIGHT][2][2]
-        self.col[SIDE_IDX_TOP][2]       = self.col[SIDE_IDX_RIGHT][2]
-        #self.col[SIDE_IDX_RIGHT][2][0]  = self.col[SIDE_IDX_BOT][2][0]
-        #self.col[SIDE_IDX_RIGHT][2][1]  = self.col[SIDE_IDX_BOT][2][1]
-        #self.col[SIDE_IDX_RIGHT][2][2]  = self.col[SIDE_IDX_BOT][2][2]
-        self.col[SIDE_IDX_RIGHT][2]     = self.col[SIDE_IDX_BOT][2]      
-        #self.col[SIDE_IDX_BOT][2][0]    = self.col[SIDE_IDX_LEFT][2][0]
-        #self.col[SIDE_IDX_BOT][2][1]    = self.col[SIDE_IDX_LEFT][2][1]
-        #self.col[SIDE_IDX_BOT][2][2]    = self.col[SIDE_IDX_LEFT][2][2]
-        self.col[SIDE_IDX_BOT][2]       = self.col[SIDE_IDX_LEFT][2]
+        #self.col[SIDE_IDX_UP][2][0]    = self.col[SIDE_IDX_RIGHT][2][0]
+        #self.col[SIDE_IDX_UP][2][1]    = self.col[SIDE_IDX_RIGHT][2][1]
+        #self.col[SIDE_IDX_UP][2][2]    = self.col[SIDE_IDX_RIGHT][2][2]
+        self.col[SIDE_IDX_UP][2]       = self.col[SIDE_IDX_RIGHT][2]
+        #self.col[SIDE_IDX_RIGHT][2][0]  = self.col[SIDE_IDX_DOWN][2][0]
+        #self.col[SIDE_IDX_RIGHT][2][1]  = self.col[SIDE_IDX_DOWN][2][1]
+        #self.col[SIDE_IDX_RIGHT][2][2]  = self.col[SIDE_IDX_DOWN][2][2]
+        self.col[SIDE_IDX_RIGHT][2]     = self.col[SIDE_IDX_DOWN][2]      
+        #self.col[SIDE_IDX_DOWN][2][0]    = self.col[SIDE_IDX_LEFT][2][0]
+        #self.col[SIDE_IDX_DOWN][2][1]    = self.col[SIDE_IDX_LEFT][2][1]
+        #self.col[SIDE_IDX_DOWN][2][2]    = self.col[SIDE_IDX_LEFT][2][2]
+        self.col[SIDE_IDX_DOWN][2]       = self.col[SIDE_IDX_LEFT][2]
         #self.col[SIDE_IDX_LEFT][2][0]   = mem_side_top[0]
         #self.col[SIDE_IDX_LEFT][2][1]   = mem_side_top[1]
         #self.col[SIDE_IDX_LEFT][2][2]   = mem_side_top[2]
         self.col[SIDE_IDX_LEFT][2]      = mem_side_top
     elif side_idx == SIDE_IDX_BACK:
-      mem_side_bot = self.col[SIDE_IDX_BOT][0].copy()
+      mem_side_bot = self.col[SIDE_IDX_DOWN][0].copy()
       if rotate_dir:    #5  
-        #self.col[SIDE_IDX_BOT][0][2]    = self.col[SIDE_IDX_LEFT][0][2]
-        #self.col[SIDE_IDX_BOT][0][1]    = self.col[SIDE_IDX_LEFT][0][1]
-        #self.col[SIDE_IDX_BOT][0][0]    = self.col[SIDE_IDX_LEFT][0][0]
-        self.col[SIDE_IDX_BOT][0]       = self.col[SIDE_IDX_LEFT][0]
-        #self.col[SIDE_IDX_LEFT][0][2]   = self.col[SIDE_IDX_TOP][0][2]
-        #self.col[SIDE_IDX_LEFT][0][1]   = self.col[SIDE_IDX_TOP][0][1]
-        #self.col[SIDE_IDX_LEFT][0][0]   = self.col[SIDE_IDX_TOP][0][0]
-        self.col[SIDE_IDX_LEFT][0]      = self.col[SIDE_IDX_TOP][0]
-        #self.col[SIDE_IDX_TOP][0][2]    = self.col[SIDE_IDX_RIGHT][0][2]
-        #self.col[SIDE_IDX_TOP][0][1]    = self.col[SIDE_IDX_RIGHT][0][1]
-        #self.col[SIDE_IDX_TOP][0][0]    = self.col[SIDE_IDX_RIGHT][0][0]
-        self.col[SIDE_IDX_TOP][0]       = self.col[SIDE_IDX_RIGHT][0]
+        #self.col[SIDE_IDX_DOWN][0][2]    = self.col[SIDE_IDX_LEFT][0][2]
+        #self.col[SIDE_IDX_DOWN][0][1]    = self.col[SIDE_IDX_LEFT][0][1]
+        #self.col[SIDE_IDX_DOWN][0][0]    = self.col[SIDE_IDX_LEFT][0][0]
+        self.col[SIDE_IDX_DOWN][0]       = self.col[SIDE_IDX_LEFT][0]
+        #self.col[SIDE_IDX_LEFT][0][2]   = self.col[SIDE_IDX_UP][0][2]
+        #self.col[SIDE_IDX_LEFT][0][1]   = self.col[SIDE_IDX_UP][0][1]
+        #self.col[SIDE_IDX_LEFT][0][0]   = self.col[SIDE_IDX_UP][0][0]
+        self.col[SIDE_IDX_LEFT][0]      = self.col[SIDE_IDX_UP][0]
+        #self.col[SIDE_IDX_UP][0][2]    = self.col[SIDE_IDX_RIGHT][0][2]
+        #self.col[SIDE_IDX_UP][0][1]    = self.col[SIDE_IDX_RIGHT][0][1]
+        #self.col[SIDE_IDX_UP][0][0]    = self.col[SIDE_IDX_RIGHT][0][0]
+        self.col[SIDE_IDX_UP][0]       = self.col[SIDE_IDX_RIGHT][0]
         #self.col[SIDE_IDX_RIGHT][0][2]  = mem_side_bot[2]
         #self.col[SIDE_IDX_RIGHT][0][1]  = mem_side_bot[1]
         #self.col[SIDE_IDX_RIGHT][0][0]  = mem_side_bot[0]
         self.col[SIDE_IDX_RIGHT][0]     = mem_side_bot
       else:    #11
-        #self.col[SIDE_IDX_BOT][0][2]    = self.col[SIDE_IDX_RIGHT][0][2]
-        #self.col[SIDE_IDX_BOT][0][1]    = self.col[SIDE_IDX_RIGHT][0][1]
-        #self.col[SIDE_IDX_BOT][0][0]    = self.col[SIDE_IDX_RIGHT][0][0]
-        self.col[SIDE_IDX_BOT][0]       = self.col[SIDE_IDX_RIGHT][0]
-        #self.col[SIDE_IDX_RIGHT][0][2]  = self.col[SIDE_IDX_TOP][0][2]
-        #self.col[SIDE_IDX_RIGHT][0][1]  = self.col[SIDE_IDX_TOP][0][1]
-        #self.col[SIDE_IDX_RIGHT][0][0]  = self.col[SIDE_IDX_TOP][0][0]
-        self.col[SIDE_IDX_RIGHT][0]     = self.col[SIDE_IDX_TOP][0]
-        #self.col[SIDE_IDX_TOP][0][2]    = self.col[SIDE_IDX_LEFT][0][2]
-        #self.col[SIDE_IDX_TOP][0][1]    = self.col[SIDE_IDX_LEFT][0][1]
-        #self.col[SIDE_IDX_TOP][0][0]    = self.col[SIDE_IDX_LEFT][0][0]
-        self.col[SIDE_IDX_TOP][0]       = self.col[SIDE_IDX_LEFT][0]
+        #self.col[SIDE_IDX_DOWN][0][2]    = self.col[SIDE_IDX_RIGHT][0][2]
+        #self.col[SIDE_IDX_DOWN][0][1]    = self.col[SIDE_IDX_RIGHT][0][1]
+        #self.col[SIDE_IDX_DOWN][0][0]    = self.col[SIDE_IDX_RIGHT][0][0]
+        self.col[SIDE_IDX_DOWN][0]       = self.col[SIDE_IDX_RIGHT][0]
+        #self.col[SIDE_IDX_RIGHT][0][2]  = self.col[SIDE_IDX_UP][0][2]
+        #self.col[SIDE_IDX_RIGHT][0][1]  = self.col[SIDE_IDX_UP][0][1]
+        #self.col[SIDE_IDX_RIGHT][0][0]  = self.col[SIDE_IDX_UP][0][0]
+        self.col[SIDE_IDX_RIGHT][0]     = self.col[SIDE_IDX_UP][0]
+        #self.col[SIDE_IDX_UP][0][2]    = self.col[SIDE_IDX_LEFT][0][2]
+        #self.col[SIDE_IDX_UP][0][1]    = self.col[SIDE_IDX_LEFT][0][1]
+        #self.col[SIDE_IDX_UP][0][0]    = self.col[SIDE_IDX_LEFT][0][0]
+        self.col[SIDE_IDX_UP][0]       = self.col[SIDE_IDX_LEFT][0]
         #self.col[SIDE_IDX_LEFT][0][2]   = mem_side_bot[2]
         #self.col[SIDE_IDX_LEFT][0][1]   = mem_side_bot[1]
         #self.col[SIDE_IDX_LEFT][0][0]   = mem_side_bot[0]
@@ -571,7 +603,7 @@ class tRubikCube:
     
     # RIGHT SIDE --> needs RIGHT TO TOP 'alignment' means that FRONT and BACK have to be rotated +270/+90)
 
-    if side_idx == SIDE_IDX_TOP: 
+    if side_idx == SIDE_IDX_UP: 
       #print("  Side:      TOP", end='\t')
       upper = self.col[SIDE_IDX_BACK]   #upper facing side
       right = self.col[SIDE_IDX_RIGHT]  #right facing side
@@ -579,7 +611,7 @@ class tRubikCube:
       left  = self.col[SIDE_IDX_LEFT]   #left facing side
       self._rotate_adjacent_sides(upper, right, lower, left, rotate_dir)
     
-    if side_idx == SIDE_IDX_BOT: 
+    if side_idx == SIDE_IDX_DOWN: 
       #print("  Side:      BOT", end='\t')
       upper = self.col[SIDE_IDX_BACK]   #upper facing side
       right = self.col[SIDE_IDX_LEFT]  #right facing side
@@ -594,9 +626,9 @@ class tRubikCube:
     if side_idx == SIDE_IDX_RIGHT: 
       #print("  Side:      RIGHT", end='\t')
       upper = self.col[SIDE_IDX_BACK]   #upper facing side
-      right = self.col[SIDE_IDX_BOT]    #right facing side
+      right = self.col[SIDE_IDX_DOWN]    #right facing side
       lower = self.col[SIDE_IDX_FRONT]  #lower facing side
-      left  = self.col[SIDE_IDX_TOP]    #left facing side
+      left  = self.col[SIDE_IDX_UP]    #left facing side
       upper = np.rot90(upper, 3)
       lower = np.rot90(lower, 1)   
       self._rotate_adjacent_sides(upper, right, lower, left, rotate_dir)
@@ -606,9 +638,9 @@ class tRubikCube:
     if side_idx == SIDE_IDX_LEFT: 
       #print("  Side:      LEFT", end='\t')
       upper = self.col[SIDE_IDX_BACK]   #upper facing side
-      right = self.col[SIDE_IDX_TOP]    #right facing side
+      right = self.col[SIDE_IDX_UP]    #right facing side
       lower = self.col[SIDE_IDX_FRONT]  #lower facing side
-      left  = self.col[SIDE_IDX_BOT]    #left facing side
+      left  = self.col[SIDE_IDX_DOWN]    #left facing side
       upper = np.rot90(upper, 1)
       lower = np.rot90(lower, 3)   
       self._rotate_adjacent_sides(upper, right, lower, left, rotate_dir)
@@ -617,9 +649,9 @@ class tRubikCube:
   
     if side_idx == SIDE_IDX_FRONT: 
       #print("  Side:      FRONT", end='\t')
-      upper = self.col[SIDE_IDX_TOP]   #upper facing side
+      upper = self.col[SIDE_IDX_UP]   #upper facing side
       right = self.col[SIDE_IDX_RIGHT]    #right facing side
-      lower = self.col[SIDE_IDX_BOT]  #lower facing side
+      lower = self.col[SIDE_IDX_DOWN]  #lower facing side
       left  = self.col[SIDE_IDX_LEFT]    #left facing side
       lower = np.rot90(lower, 2)
       right = np.rot90(right, 3)
@@ -632,9 +664,9 @@ class tRubikCube:
 
     if side_idx == SIDE_IDX_BACK: 
       #print("  Side:      BACK", end='\t')
-      upper = self.col[SIDE_IDX_BOT]   #upper facing side
+      upper = self.col[SIDE_IDX_DOWN]   #upper facing side
       right = self.col[SIDE_IDX_RIGHT]    #right facing side
-      lower = self.col[SIDE_IDX_TOP]  #lower facing side
+      lower = self.col[SIDE_IDX_UP]  #lower facing side
       left  = self.col[SIDE_IDX_LEFT]    #left facing side
       upper = np.rot90(upper, 2)
       right = np.rot90(right, 1)
@@ -655,10 +687,10 @@ class tRubikCube:
     if turn_dir==TURN_DIR_LEFT_TO_TOP:
       cube_sides = self.col
       mem_cube_sides = cube_sides.copy()
-      cube_sides[SIDE_IDX_TOP]   = mem_cube_sides[SIDE_IDX_LEFT]
-      cube_sides[SIDE_IDX_LEFT]  = mem_cube_sides[SIDE_IDX_BOT]
-      cube_sides[SIDE_IDX_BOT]   = mem_cube_sides[SIDE_IDX_RIGHT]
-      cube_sides[SIDE_IDX_RIGHT] = mem_cube_sides[SIDE_IDX_TOP]
+      cube_sides[SIDE_IDX_UP]   = mem_cube_sides[SIDE_IDX_LEFT]
+      cube_sides[SIDE_IDX_LEFT]  = mem_cube_sides[SIDE_IDX_DOWN]
+      cube_sides[SIDE_IDX_DOWN]   = mem_cube_sides[SIDE_IDX_RIGHT]
+      cube_sides[SIDE_IDX_RIGHT] = mem_cube_sides[SIDE_IDX_UP]
 
       self._rotate_side(SIDE_IDX_FRONT, ROT_DIR_CW)
       self._rotate_side(SIDE_IDX_BACK, ROT_DIR_CCW)
@@ -667,10 +699,10 @@ class tRubikCube:
     if turn_dir==TURN_DIR_RIGHT_TO_TOP:
       cube_sides = self.col
       mem_cube_sides = cube_sides.copy()
-      cube_sides[SIDE_IDX_TOP]   = mem_cube_sides[SIDE_IDX_RIGHT]
-      cube_sides[SIDE_IDX_LEFT]  = mem_cube_sides[SIDE_IDX_TOP]
-      cube_sides[SIDE_IDX_BOT]   = mem_cube_sides[SIDE_IDX_LEFT]
-      cube_sides[SIDE_IDX_RIGHT] = mem_cube_sides[SIDE_IDX_BOT]
+      cube_sides[SIDE_IDX_UP]   = mem_cube_sides[SIDE_IDX_RIGHT]
+      cube_sides[SIDE_IDX_LEFT]  = mem_cube_sides[SIDE_IDX_UP]
+      cube_sides[SIDE_IDX_DOWN]   = mem_cube_sides[SIDE_IDX_LEFT]
+      cube_sides[SIDE_IDX_RIGHT] = mem_cube_sides[SIDE_IDX_DOWN]
 
       self._rotate_side(SIDE_IDX_FRONT, ROT_DIR_CCW)
       self._rotate_side(SIDE_IDX_BACK, ROT_DIR_CW)
@@ -679,34 +711,34 @@ class tRubikCube:
     if turn_dir==TURN_DIR_FRONT_TO_TOP:
       cube_sides = self.col
       mem_cube_sides = cube_sides.copy()
-      cube_sides[SIDE_IDX_TOP]   = mem_cube_sides[SIDE_IDX_FRONT]
-      cube_sides[SIDE_IDX_FRONT]  = mem_cube_sides[SIDE_IDX_BOT]
-      cube_sides[SIDE_IDX_BOT]   = mem_cube_sides[SIDE_IDX_BACK]
-      cube_sides[SIDE_IDX_BACK] = mem_cube_sides[SIDE_IDX_TOP]
+      cube_sides[SIDE_IDX_UP]   = mem_cube_sides[SIDE_IDX_FRONT]
+      cube_sides[SIDE_IDX_FRONT]  = mem_cube_sides[SIDE_IDX_DOWN]
+      cube_sides[SIDE_IDX_DOWN]   = mem_cube_sides[SIDE_IDX_BACK]
+      cube_sides[SIDE_IDX_BACK] = mem_cube_sides[SIDE_IDX_UP]
 
       self._rotate_side(SIDE_IDX_LEFT, ROT_DIR_CCW)
       self._rotate_side(SIDE_IDX_RIGHT, ROT_DIR_CW)
       
       self._rotate_side(SIDE_IDX_FRONT, ROT_DIR_CCW)
       self._rotate_side(SIDE_IDX_FRONT, ROT_DIR_CCW)
-      self._rotate_side(SIDE_IDX_BOT, ROT_DIR_CCW)
-      self._rotate_side(SIDE_IDX_BOT, ROT_DIR_CCW)
+      self._rotate_side(SIDE_IDX_DOWN, ROT_DIR_CCW)
+      self._rotate_side(SIDE_IDX_DOWN, ROT_DIR_CCW)
 
 
     if turn_dir==TURN_DIR_BACK_TO_TOP:
       cube_sides = self.col
       mem_cube_sides = cube_sides.copy()
-      cube_sides[SIDE_IDX_TOP]   = mem_cube_sides[SIDE_IDX_BACK]
-      cube_sides[SIDE_IDX_FRONT]  = mem_cube_sides[SIDE_IDX_TOP]
-      cube_sides[SIDE_IDX_BOT]   = mem_cube_sides[SIDE_IDX_FRONT]
-      cube_sides[SIDE_IDX_BACK] = mem_cube_sides[SIDE_IDX_BOT]
+      cube_sides[SIDE_IDX_UP]   = mem_cube_sides[SIDE_IDX_BACK]
+      cube_sides[SIDE_IDX_FRONT]  = mem_cube_sides[SIDE_IDX_UP]
+      cube_sides[SIDE_IDX_DOWN]   = mem_cube_sides[SIDE_IDX_FRONT]
+      cube_sides[SIDE_IDX_BACK] = mem_cube_sides[SIDE_IDX_DOWN]
 
       self._rotate_side(SIDE_IDX_LEFT, ROT_DIR_CW)
       self._rotate_side(SIDE_IDX_RIGHT, ROT_DIR_CCW)
       self._rotate_side(SIDE_IDX_BACK, ROT_DIR_CCW)
       self._rotate_side(SIDE_IDX_BACK, ROT_DIR_CCW)
-      self._rotate_side(SIDE_IDX_BOT, ROT_DIR_CCW)
-      self._rotate_side(SIDE_IDX_BOT, ROT_DIR_CCW)
+      self._rotate_side(SIDE_IDX_DOWN, ROT_DIR_CCW)
+      self._rotate_side(SIDE_IDX_DOWN, ROT_DIR_CCW)
 
     #axis = z (anchor = TOP / BOT)
     if turn_dir==TURN_DIR_LEFT_TO_FRONT:
@@ -716,8 +748,8 @@ class tRubikCube:
       cube_sides[SIDE_IDX_FRONT]  = mem_cube_sides[SIDE_IDX_LEFT]
       cube_sides[SIDE_IDX_RIGHT]   = mem_cube_sides[SIDE_IDX_FRONT]
       cube_sides[SIDE_IDX_BACK] = mem_cube_sides[SIDE_IDX_RIGHT]
-      self._rotate_side(SIDE_IDX_BOT, ROT_DIR_CW)
-      self._rotate_side(SIDE_IDX_TOP, ROT_DIR_CCW)
+      self._rotate_side(SIDE_IDX_DOWN, ROT_DIR_CW)
+      self._rotate_side(SIDE_IDX_UP, ROT_DIR_CCW)
     
     if turn_dir==TURN_DIR_RIGHT_TO_FRONT:
       cube_sides = self.col
@@ -726,17 +758,17 @@ class tRubikCube:
       cube_sides[SIDE_IDX_FRONT]  = mem_cube_sides[SIDE_IDX_RIGHT]
       cube_sides[SIDE_IDX_RIGHT]   = mem_cube_sides[SIDE_IDX_BACK]
       cube_sides[SIDE_IDX_BACK] = mem_cube_sides[SIDE_IDX_LEFT]
-      self._rotate_side(SIDE_IDX_BOT, ROT_DIR_CCW)
-      self._rotate_side(SIDE_IDX_TOP, ROT_DIR_CW)
+      self._rotate_side(SIDE_IDX_DOWN, ROT_DIR_CCW)
+      self._rotate_side(SIDE_IDX_UP, ROT_DIR_CW)
 
    
   #all possible actions
   def actions(self, action):
 
-    if action==0: self.rotate(SIDE_IDX_TOP, ROT_DIR_CW)
-    elif action==6: self.rotate(SIDE_IDX_TOP, ROT_DIR_CCW)
-    elif action==1: self.rotate(SIDE_IDX_BOT, ROT_DIR_CW)
-    elif action==7: self.rotate(SIDE_IDX_BOT, ROT_DIR_CCW)
+    if action==0: self.rotate(SIDE_IDX_UP, ROT_DIR_CW)
+    elif action==6: self.rotate(SIDE_IDX_UP, ROT_DIR_CCW)
+    elif action==1: self.rotate(SIDE_IDX_DOWN, ROT_DIR_CW)
+    elif action==7: self.rotate(SIDE_IDX_DOWN, ROT_DIR_CCW)
     elif action==2: self.rotate(SIDE_IDX_LEFT, ROT_DIR_CW)
     elif action==8: self.rotate(SIDE_IDX_LEFT, ROT_DIR_CCW)
     elif action==3: self.rotate(SIDE_IDX_RIGHT, ROT_DIR_CW)
@@ -751,10 +783,10 @@ class tRubikCube:
  
   #simple actions, less math, less if/else
   def actions_simple(self, action):
-    if action==0:         self.rotate_simple(SIDE_IDX_TOP, ROT_DIR_CW)
-    elif action==6:       self.rotate_simple(SIDE_IDX_TOP, ROT_DIR_CCW)
-    elif action==1:       self.rotate_simple(SIDE_IDX_BOT, ROT_DIR_CW)
-    elif action==7:       self.rotate_simple(SIDE_IDX_BOT, ROT_DIR_CCW)
+    if action==0:         self.rotate_simple(SIDE_IDX_UP, ROT_DIR_CW)
+    elif action==6:       self.rotate_simple(SIDE_IDX_UP, ROT_DIR_CCW)
+    elif action==1:       self.rotate_simple(SIDE_IDX_DOWN, ROT_DIR_CW)
+    elif action==7:       self.rotate_simple(SIDE_IDX_DOWN, ROT_DIR_CCW)
     elif action==2:       self.rotate_simple(SIDE_IDX_LEFT, ROT_DIR_CW)
     elif action==8:       self.rotate_simple(SIDE_IDX_LEFT, ROT_DIR_CCW)
     elif action==3:       self.rotate_simple(SIDE_IDX_RIGHT, ROT_DIR_CW)
@@ -791,8 +823,42 @@ class tRubikCube:
     self.actions_list.clear()
   
   #get a copy from the action list
-  def get_action_list(self):
-    return self.actions_list.copy()
+  #optional add parameter <notation> to get Text instead of numbers
+  #default will give the numbers
+  def get_action_list(self, notation="numbers"):
+    if(notation=="numbers"):
+      return self.actions_list.copy()
+    elif (notation=="short"):
+      action_list = []
+      for action in self.actions_list:
+        action_list.append(action_dict_short[action])
+      return action_list
+    elif (notation=="long"):
+      action_list = []
+      for action in self.actions_list:
+        action_list.append(action_dict[action])
+      return action_list
+
+
+  #print readable action list in short notation U / U'
+  def print_action_list(self, max_line_len=100):
+    szText = ""
+    cnt = 0
+    for action in self.get_action_list():
+      szNew = "%s, " % action_dict_short[action]
+      szText += szNew
+      cnt += len(szNew)   #increment by len of added string
+
+      #max line_len reached --> print this info, and start new line
+      if(cnt >= max_line_len):
+        print("%s" % szText[:-2], end="\n") #skip last 2 items
+        cnt = 0
+        szText = ""
+    
+    #print remaining 
+    if(len(szText) > 0): 
+      print("%s" % szText[:-2], end="\n")#skip last 2 items
+
   
   #rotates a edge on white side 
   #side: Front, back, left, right
@@ -947,15 +1013,32 @@ class tRubikCube:
   def save_to_file(self, filename):
     #open the file, if exists replaces all content
     with open(filename, 'w', encoding='utf-8') as outfile:
+      mapped_values = deepcopy(self.col).tolist()
+      for i in range(6):
+        for j in range(3):
+          for k in range(3):
+            item = mapped_values[i][j][k]    
+            mapped_values[i][j][k] = color_dict[item] 
       #define data to write
-      outdata = {
-        'col'     : self.col.tolist(), #np array must be converted to list
-        'actions' : self.actions_list,
-        'actions_dict' : action_dict,
-        'color_dict'   : color_dict,
-        'side_dict'    : side_dict,
+      values_dict = {
+         side_dict[SIDE_IDX_UP]       : mapped_values[SIDE_IDX_UP],
+         side_dict[SIDE_IDX_FRONT]    : mapped_values[SIDE_IDX_FRONT],
+         side_dict[SIDE_IDX_BACK]     : mapped_values[SIDE_IDX_BACK],
+         side_dict[SIDE_IDX_RIGHT]    : mapped_values[SIDE_IDX_RIGHT],
+         side_dict[SIDE_IDX_LEFT]     : mapped_values[SIDE_IDX_LEFT],
+         side_dict[SIDE_IDX_DOWN]     : mapped_values[SIDE_IDX_DOWN],
         }
-      json.dump(outdata, outfile, separators=(',', ':'), sort_keys=False, indent=4)    
+
+      actions_short = self.get_action_list(notation="short")
+      outdata = {
+        'col'                 : values_dict, #np array must be converted to list
+        'actions_dict_short'  : action_dict_short,
+        'color_dict'          : color_dict,
+        'actions_list'        : self.actions_list,
+        'actions_list_short'  : actions_short,
+        }
+      json.dump(outdata, outfile, separators=(',', ':'), sort_keys=False, indent=2)    
+
     return(0)
   
 
@@ -963,9 +1046,41 @@ class tRubikCube:
     #exists = os.path.isfile(filename)
     with open(filename, 'r', encoding='utf-8') as infile:
       indata = json.loads(infile.read())
-      self.col            = np.array(indata['col'])
-      self.actions_list   = indata['actions']
-    return(0)
+      values              = indata['col']
+      self.actions_list   = indata['actions_list']
+
+      mapped_values = [None] * 6
+      mapped_values[SIDE_IDX_UP]     = values[side_dict[SIDE_IDX_UP]]
+      mapped_values[SIDE_IDX_FRONT]  = values[side_dict[SIDE_IDX_FRONT]]
+      mapped_values[SIDE_IDX_BACK]   = values[side_dict[SIDE_IDX_BACK]]
+      mapped_values[SIDE_IDX_RIGHT]  = values[side_dict[SIDE_IDX_RIGHT]]
+      mapped_values[SIDE_IDX_LEFT]   = values[side_dict[SIDE_IDX_LEFT]]
+      mapped_values[SIDE_IDX_DOWN]   = values[side_dict[SIDE_IDX_DOWN]]
+
+      for i in range(6):
+        for j in range(3):
+          for k in range(3):
+            item = mapped_values[i][j][k]    
+            
+            found_key = None
+            #search for value in dict and return key
+            for key,value in color_dict.items():
+              if value == item:
+                found_key = key
+                break
+            #color not found  --> replace with None
+            if(found_key == None):
+              print("Import error: Color '%s' on side: '%s'[%d][%d] not recognized" % (item, side_dict[i],j,k))
+              mapped_values[i][j][k] = -1 
+            else:
+              mapped_values[i][j][k] = found_key 
+            
+      self.col[SIDE_IDX_UP]     = mapped_values[SIDE_IDX_UP]
+      self.col[SIDE_IDX_FRONT]  = mapped_values[SIDE_IDX_FRONT]
+      self.col[SIDE_IDX_BACK]   = mapped_values[SIDE_IDX_BACK]
+      self.col[SIDE_IDX_RIGHT]  = mapped_values[SIDE_IDX_RIGHT]
+      self.col[SIDE_IDX_LEFT]   = mapped_values[SIDE_IDX_LEFT]
+      self.col[SIDE_IDX_DOWN]   = mapped_values[SIDE_IDX_DOWN]
 
     #compares datafield
   def equals(self, cube):
@@ -986,7 +1101,7 @@ class tRubikCube:
         score += row.tolist().count(center_block)   
     return(score)
   
-  #compares element per element, if cvalled with ORIG_CUB Data it's result is equal to score()
+  #compares element per element, if called with ORIG_CUB Data it's result is equal to score()
   def compare(self, cube):
     score = 0
     for i in range(6):
@@ -1064,16 +1179,16 @@ class tRubikCube:
   """
   def get_edge(self, location=None, sort=False):
     edge_block       = [[0]*2 for _ in range(12)]
-    edge_block[0][0] = self.col[SIDE_IDX_TOP][0][1]
+    edge_block[0][0] = self.col[SIDE_IDX_UP][0][1]
     edge_block[0][1] = self.col[SIDE_IDX_BACK][2][1]
     
-    edge_block[1][0] = self.col[SIDE_IDX_TOP][1][2]
+    edge_block[1][0] = self.col[SIDE_IDX_UP][1][2]
     edge_block[1][1] = self.col[SIDE_IDX_RIGHT][1][0]
     
-    edge_block[2][0] = self.col[SIDE_IDX_TOP][2][1]
+    edge_block[2][0] = self.col[SIDE_IDX_UP][2][1]
     edge_block[2][1] = self.col[SIDE_IDX_FRONT][0][1]
     
-    edge_block[3][0] = self.col[SIDE_IDX_TOP][1][0]
+    edge_block[3][0] = self.col[SIDE_IDX_UP][1][0]
     edge_block[3][1] = self.col[SIDE_IDX_LEFT][1][2]
 
     edge_block[4][0] = self.col[SIDE_IDX_BACK][1][2]
@@ -1088,16 +1203,16 @@ class tRubikCube:
     edge_block[7][0] = self.col[SIDE_IDX_LEFT][0][1]
     edge_block[7][1] = self.col[SIDE_IDX_BACK][1][0]
 
-    edge_block[8][0] = self.col[SIDE_IDX_BOT][0][1]
+    edge_block[8][0] = self.col[SIDE_IDX_DOWN][0][1]
     edge_block[8][1] = self.col[SIDE_IDX_BACK][0][1]
     
-    edge_block[9][0] = self.col[SIDE_IDX_BOT][1][2]
+    edge_block[9][0] = self.col[SIDE_IDX_DOWN][1][2]
     edge_block[9][1] = self.col[SIDE_IDX_LEFT][1][0]
     
-    edge_block[10][0] = self.col[SIDE_IDX_BOT][2][1]
+    edge_block[10][0] = self.col[SIDE_IDX_DOWN][2][1]
     edge_block[10][1] = self.col[SIDE_IDX_FRONT][2][1]
     
-    edge_block[11][0] = self.col[SIDE_IDX_BOT][1][0]
+    edge_block[11][0] = self.col[SIDE_IDX_DOWN][1][0]
     edge_block[11][1] = self.col[SIDE_IDX_RIGHT][1][2]
     #requested sorted values
     if sort == True:
@@ -1118,35 +1233,35 @@ class tRubikCube:
     corner_block  = [[0]*3 for _ in range(8)]  
     corner_block_idx = self.N_DIM - 1
 
-    corner_block[0][0] = self.col[SIDE_IDX_TOP][0][0]
+    corner_block[0][0] = self.col[SIDE_IDX_UP][0][0]
     corner_block[0][1] = self.col[SIDE_IDX_BACK][corner_block_idx][0]
     corner_block[0][2] = self.col[SIDE_IDX_LEFT][0][corner_block_idx]
 
-    corner_block[1][0] = self.col[SIDE_IDX_TOP][0][corner_block_idx]
+    corner_block[1][0] = self.col[SIDE_IDX_UP][0][corner_block_idx]
     corner_block[1][1] = self.col[SIDE_IDX_BACK][corner_block_idx][corner_block_idx]
     corner_block[1][2] = self.col[SIDE_IDX_RIGHT][0][0]
 
-    corner_block[2][0] = self.col[SIDE_IDX_TOP][corner_block_idx][corner_block_idx]
+    corner_block[2][0] = self.col[SIDE_IDX_UP][corner_block_idx][corner_block_idx]
     corner_block[2][1] = self.col[SIDE_IDX_FRONT][0][corner_block_idx]
     corner_block[2][2] = self.col[SIDE_IDX_RIGHT][corner_block_idx][0]
 
-    corner_block[3][0] = self.col[SIDE_IDX_TOP][corner_block_idx][0]
+    corner_block[3][0] = self.col[SIDE_IDX_UP][corner_block_idx][0]
     corner_block[3][1] = self.col[SIDE_IDX_FRONT][0][0]
     corner_block[3][2] = self.col[SIDE_IDX_LEFT][corner_block_idx][corner_block_idx]
 
-    corner_block[4][0] = self.col[SIDE_IDX_BOT][0][0]
+    corner_block[4][0] = self.col[SIDE_IDX_DOWN][0][0]
     corner_block[4][1] = self.col[SIDE_IDX_BACK][0][corner_block_idx]
     corner_block[4][2] = self.col[SIDE_IDX_RIGHT][0][corner_block_idx]
 
-    corner_block[5][0] = self.col[SIDE_IDX_BOT][0][corner_block_idx]
+    corner_block[5][0] = self.col[SIDE_IDX_DOWN][0][corner_block_idx]
     corner_block[5][1] = self.col[SIDE_IDX_BACK][0][0]
     corner_block[5][2] = self.col[SIDE_IDX_LEFT][0][0]
 
-    corner_block[6][0] = self.col[SIDE_IDX_BOT][corner_block_idx][corner_block_idx]
+    corner_block[6][0] = self.col[SIDE_IDX_DOWN][corner_block_idx][corner_block_idx]
     corner_block[6][1] = self.col[SIDE_IDX_FRONT][corner_block_idx][0]
     corner_block[6][2] = self.col[SIDE_IDX_LEFT][corner_block_idx][0]
 
-    corner_block[7][0] = self.col[SIDE_IDX_BOT][corner_block_idx][0]
+    corner_block[7][0] = self.col[SIDE_IDX_DOWN][corner_block_idx][0]
     corner_block[7][1] = self.col[SIDE_IDX_FRONT][corner_block_idx][corner_block_idx]
     corner_block[7][2] = self.col[SIDE_IDX_RIGHT][corner_block_idx][corner_block_idx]
     #requested sorted values
@@ -1165,7 +1280,7 @@ class tRubikCube:
       center_block[i] = self.col[i][1][1]
     #requested sorted values
     if sort == True:
-        center_block      = np.sort(corner_block).tolist()
+        center_block      = np.sort(center_block).tolist()
     #requested a specific location
     if location: return center_block[location]
     return center_block    
@@ -1179,7 +1294,7 @@ class tRubikCube:
 
     #this is sorted validation data, that is derived from the original cube
     #it hast to be identical with sorted data from any cube
-    orig_cube           = cube.tRubikCube()
+    orig_cube           = tRubikCube()
     edge_block_valid    = orig_cube.get_edge(sort=True)
     corner_block_valid  = orig_cube.get_corner(sort=True)
     center_block_valid  = orig_cube.get_center(sort=True)
@@ -1375,7 +1490,12 @@ def main():
   os.system('color') 
   #increase size of console
   os.system('mode con: cols=120 lines=60')  #12*4 +1
-  cube_algo_check()
+  #cube_algo_check()
+
+  orig_cube = tRubikCube()
+  orig_cube.save_to_file("test.json")
+  orig_cube.load_from_file("test.json")
+  orig_cube.print_2d()
   #cube_actions_check()
   #cube_score_check()
   #cube_benchmark()

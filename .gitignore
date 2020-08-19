@@ -339,3 +339,7 @@ ASALocalRun/
 # BeatPulse healthcheck temp database
 healthchecksdb
 /real_cube.json_score_34_00.json
+/data/wenzis_solved.json
+/data/wenzis2_solved.json
+/data/wenzis2.json
+/data/wenzis.json

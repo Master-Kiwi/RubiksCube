@@ -4,13 +4,13 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>1a830b3c-6aea-4f75-b20e-81a88195778d</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>src\main_classic_solver.py</StartupFile>
-    <SearchPath>
-    </SearchPath>
+    <StartupFile>src\RubiksCube.py</StartupFile>
+    <SearchPath>src</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>RubiksCube</Name>
     <RootNamespace>RubiksCube</RootNamespace>
+    <SuppressConfigureTestFrameworkPrompt>true</SuppressConfigureTestFrameworkPrompt>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -30,7 +30,8 @@
     <Compile Include="src\iterate_tools.py" />
     <Compile Include="src\main_bruteforce.py" />
     <Compile Include="src\main_bruteforce_multiproc.py" />
-    <Compile Include="src\main_tf_test.py">
+    <Compile Include="src\main_env_test.py" />
+    <Compile Include="src\main_torch_crossentropy.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="src\main_classic_solver.py">
@@ -55,6 +56,7 @@
     <Content Include="doc\Cube_Project.docx" />
     <Content Include="doc\logo.png" />
     <Content Include="README.md" />
+    <Content Include="src\gym-cube\readme.MD" />
     <Content Include="src\info.md" />
   </ItemGroup>
   <ItemGroup>

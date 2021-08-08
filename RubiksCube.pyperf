@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<ProfilingTarget xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <ProjectTarget>
+    <TargetProject>1a830b3c-6aea-4f75-b20e-81a88195778d</TargetProject>
+    <FriendlyName>RubiksCube</FriendlyName>
+  </ProjectTarget>
+  <Reports>
+    <Report>
+      <Filename>C:\Users\Kiwi\AppData\Local\Temp\RubiksCube_20200823.vsp</Filename>
+    </Report>
+    <Report>
+      <Filename>C:\Users\Kiwi\AppData\Local\Temp\RubiksCube_20200823(1).vsp</Filename>
+    </Report>
+  </Reports>
+  <UseVTune>false</UseVTune>
+</ProfilingTarget>

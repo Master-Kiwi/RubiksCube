@@ -8,7 +8,7 @@
 #    corner position and rotation
 #    edge position and rotation  
 #  test this new scoring
-#  unify algo methods, maybe create a dict for all algos and use a single method to call
+#  unify algo methods, maybe create a dict for all algos and use a sin0gle method to call
 #     move algos to new file "Rubiks_Cube_algos.py"?
 #  add metrics (actual is quarter-turn), add half-turn (maybe decide with constructor what metric to use)
 #optional:
@@ -162,34 +162,46 @@ col_fmt_str = {
 
 #self.action_dict lists all possible actions, key=action_idx
 action_dict = { 
-  0: "ROTATE UP / CW",
-  6: "ROTATE UP / CCW",
-  1: "ROTATE DOWN / CW",
-  7: "ROTATE DOWN / CCW",
-  2: "ROTATE LEFT / CW",
-  8: "ROTATE LEFT / CCW",  
-  3: "ROTATE RIGHT / CW",
-  9: "ROTATE RIGHT / CCW",
-  4: "ROTATE FRONT / CW",
-  10:"ROTATE FRONT / CCW",
-  5: "ROTATE BACK / CW",
-  11:"ROTATE BACK / CCW"
+  0:  "ROTATE UP / CW",
+  6:  "ROTATE UP / CCW",
+  12: "ROTATE UP 2x",
+  1:  "ROTATE DOWN / CW",
+  7:  "ROTATE DOWN / CCW",
+  13: "ROTATE DOWN 2x",
+  2:  "ROTATE LEFT / CW",
+  8:  "ROTATE LEFT / CCW",  
+  14: "ROTATE LEFT 2x",
+  3:  "ROTATE RIGHT / CW",
+  9:  "ROTATE RIGHT / CCW",
+  15: "ROTATE RIGHT 2x",
+  4:  "ROTATE FRONT / CW",
+  10: "ROTATE FRONT / CCW",
+  16: "ROTATE FRONT 2x",
+  5:  "ROTATE BACK / CW",
+  11: "ROTATE BACK / CCW",
+  17: "ROTATE BACK 2x"
 }
 
 #self.action_dict lists all possible actions, key=action_idx
 action_dict_short = { 
-  0: "U ",
-  6: "U'",
-  1: "D ",
-  7: "D'",
-  2: "L ",
-  8: "L'",  
-  3: "R ",
-  9: "R'",
-  4: "F ",
-  10:"F'",
-  5: "B ",
-  11:"B'"
+  0:  "U ",
+  6:  "U'",
+  12: "U2",
+  1:  "D ",
+  7:  "D'",
+  13: "D2",
+  2:  "L ",
+  8:  "L'",  
+  14: "L2",
+  3:  "R ",
+  9:  "R'",
+  15: "R2",
+  4:  "F ",
+  10: "F'",
+  16: "F2",
+  5:  "B ",
+  11: "B'",
+  17: "B2"
 }
 #key=color index
 color_dict = {
@@ -225,8 +237,8 @@ class tRubikCube:
     #set initial state of cube = solved cube
     #opposite sides
     self.col = np.zeros([6,self.N_DIM,self.N_DIM], dtype=int)
-    self.col[SIDE_IDX_UP]    = COL_IDX_WHITE
-    self.col[SIDE_IDX_DOWN]    = COL_IDX_YELLOW
+    self.col[SIDE_IDX_UP]     = COL_IDX_WHITE
+    self.col[SIDE_IDX_DOWN]   = COL_IDX_YELLOW
     self.col[SIDE_IDX_FRONT]  = COL_IDX_ORANGE
     self.col[SIDE_IDX_BACK]   = COL_IDX_RED  
     self.col[SIDE_IDX_LEFT]   = COL_IDX_BLUE
@@ -804,8 +816,10 @@ class tRubikCube:
   def conj_action(self, action):
     if action < 6:
       return (action + 6)
-    if action >= 6 and action < self.num_actions():
+    elif action >= 6 and action < self.num_actions():
       return (action - 6)
+    elif action >= 12 and action < 18: #for half-turn metric actions
+      return action     
     
   #returns the conjugate actions list
   def get_conj_action_list(self):
@@ -1285,7 +1299,13 @@ class tRubikCube:
     if location: return center_block[location]
     return center_block    
 
+  def get_state(self, flatten = False):
+    if flatten == False:
+      return deepcopy(self.col)
+    else:
+      return deepcopy(self.col.flatten(order = "C"))
 
+      
 
   def self_test(self):
     #print("Check consistency of data")

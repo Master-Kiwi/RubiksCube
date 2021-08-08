@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>1a830b3c-6aea-4f75-b20e-81a88195778d</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>src\RubiksCube.py</StartupFile>
+    <StartupFile>src\main_env_test.py</StartupFile>
     <SearchPath>src</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -56,6 +56,7 @@
     <Content Include="doc\Cube_Project.docx" />
     <Content Include="doc\logo.png" />
     <Content Include="README.md" />
+    <Content Include="src\gym-cube\pip_install_package.bat" />
     <Content Include="src\gym-cube\readme.MD" />
     <Content Include="src\info.md" />
   </ItemGroup>

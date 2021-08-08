@@ -106,6 +106,7 @@ def main():
   
   for action in info:
     time.sleep(2)
+    print(" Action: %d" %action)
     obs, reward, done, info = env.step(action)
     env.render(mode = "human")
   

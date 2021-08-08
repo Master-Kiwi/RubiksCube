@@ -4,10 +4,16 @@ src folder contains main and sub .py files
 all main are intended to run and do their specific action
 * main_bruteforce: is searching for a solution by brute-force attack on the cube in single processing, test of the bruteforce method and the iterator
 * main_bruteforce_multiproc: is searching for a solution by brute-force attack on the cube, using multprocessing to utilize new multicore CPU
+* main_classic_solver.py: simple solver to be controlled manually
+* main_torch_crossentropy.py: pytorch trial
 
 main are identified by filename starting with "main_"
 all other are submodules
 each submodule has a main() method that can be used to test for their specific methods
+
+there is subfolder "gym" - containing openAI gym environment, to be included as a python package
+pip_install_package.bat will install the python package using pip
+you only need to do this once
 
 
 # Requirements
@@ -15,6 +21,9 @@ This project is developed using *Visual Studio 2019 - Community* Edition
 Python Interpreter 3.x is required. It is developed on 3.7 and tested on 3.6
 only *numpy* is required at the moment, all other used packages are installed with the python interpreter
 Windows 10 would be good as you have colored console output
+pytorch, gym and tensorboard are tools for reeinforcement learning
+the gym environment uses graphical rendering, like other classic environments have (e.g. cartpole)
+
 
 # about the Console Output
 The output on the console is using ANSI ESC with CSI format strings.

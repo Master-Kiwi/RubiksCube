@@ -51,7 +51,7 @@ class CubeEnv(gym.Env):
 
     #2D model (6*3*3 faces)
     self.observation_space = spaces.Discrete(54)
-    self.observation_space = spaces.Box(low = 0.0, high = 1.0, shape = (54,6), dtype=np.float32)
+    #self.observation_space = spaces.Box(low = 0.0, high = 1.0, shape = (54,6), dtype=np.float32)
     #self.observation_space = spaces.Box(low = 0.0, high = 5.0, shape = (54, 1), dtype = np.float32)
 
 
@@ -99,8 +99,8 @@ class CubeEnv(gym.Env):
   #
   def reset(self, scramble_count=None, scramble_list=None):
 
-    #self.state = np.zeros(54, dtype=np.uint8)
-    self.state = np.zeros(shape=(54,6),dtype=np.uint8) 
+    self.state = np.zeros(54, dtype=np.uint8)
+    #self.state = np.zeros(shape=(54,6),dtype=np.uint8) 
     #self.state = self.np_random.uniform(low=0, high=6, size=(6,9,))
 
     self.steps_beyond_done = None
@@ -162,9 +162,11 @@ class CubeEnv(gym.Env):
     observation = self.cube.get_state(flatten = True)
 
     #one hot encoding
-    for idx in range(0,len(observation),1):
-      value = observation[idx]
-      self.state[idx][value] = 1.0
+    #for idx in range(0,len(observation),1):
+      #value = observation[idx]
+      #self.state[idx][value] = 1.0
+
+    self.state = observation
 
     return np.array(self.state), self.scramble_action_list
 
@@ -313,9 +315,9 @@ def main():
 
   #env = CubeEnv(metric="half-turn")
   env = CubeEnv(metric="quarter-turn")
-  env_test(env)
+  #env_test(env)
   #random_agent(env)
-  #render_test(env)
+  render_test(env)
   
   exit(0)
 
@@ -357,7 +359,7 @@ def env_test(env):
   #print("Observation size:   ", obs_size)
   print("Actual Observation: ", obs)
   print("scramble_actions:   ", scramble_actions)
-
+  
 
   #sample random action
   random_action = env.action_space.sample()

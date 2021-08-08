@@ -26,7 +26,7 @@ def main():
 
 
   #environment at solved state
-  obs, scramble_actions = env.reset()                                 
+  obs = env.reset()                                 
   env.render(mode = "human")
   print("---Env in Reset State = Solved---")
   print("Actual Observation: ", obs)
@@ -35,19 +35,19 @@ def main():
 
   #defined scramble actions
   random_actions = [0,0]
-  obs, scramble_actions = env.reset(scramble_list = random_actions)   
+  obs = env.reset(scramble_list = random_actions)   
   env.render(mode = "human")
   print("---Env with predefined scramble actions = %s---" %random_actions)
-  print("Scramble Actions:   ", scramble_actions)
+  #print("Scramble Actions:   ", scramble_actions)
   print("Actual Observation: ", obs)
   input("Press Enter to Continue")
 
   #defined scramble count
   random_scramble_count = 4
-  obs, scramble_actions = env.reset(scramble_count = random_scramble_count)               
+  obs = env.reset(scramble_count = random_scramble_count)               
   env.render(mode = "human")
   print("---Env with %02d random scramble actions" %random_scramble_count )
-  print("Scramble Actions:   ", scramble_actions)
+  #print("Scramble Actions:   ", scramble_actions)
   print("Actual Observation: ", obs)
   input("Press Enter to Continue")
 
@@ -57,8 +57,8 @@ def main():
   #simple random agent
   print("---Simple random agent playing---" )
   random_actions = [0,1,2,3]
-  obs, scramble_actions = env.reset(scramble_list = random_actions)
-  print("Scramble Actions:   ", scramble_actions) 
+  obs = env.reset(scramble_list = random_actions)
+  #print("Scramble Actions:   ", scramble_actions) 
   input("Press Enter to Continue")
 
   episode_cnt = 0
@@ -66,7 +66,7 @@ def main():
 
   while True:
     #set to starting condition, get initial obs
-    obs, scramble_actions = env.reset(scramble_list = random_actions)
+    obs = env.reset(scramble_list = random_actions)
 
     #play 1 episode
     while True:
@@ -97,11 +97,11 @@ def main():
   print("---Environment solved from random agent---")
   print(" Played %d Episodes" %episode_cnt)
   print(" Solution found:       ", info)
-  print(" Scramble Code was:    ", scramble_actions)
+  #print(" Scramble Code was:    ", scramble_actions)
   input("-Press Enter to see solution-")
   
   #Present the solution
-  obs, scramble_actions = env.reset(scramble_list = random_actions)
+  obs = env.reset(scramble_list = random_actions)
   env.render(mode = "human")
   
   for action in info:

@@ -88,6 +88,7 @@ class CubeEnv(gym.Env):
       result                              #puzzle solved
       or self.steps > self.gods_no        #gods no reached
       or visited                          #state already seen
+      or self.steps > len(self.scramble_action_list) #more actions as initial scramble
       )
 
     if result is True:      reward = 1
@@ -168,7 +169,8 @@ class CubeEnv(gym.Env):
 
     self.state = observation
 
-    return np.array(self.state), self.scramble_action_list
+    #return np.array(self.state), self.scramble_action_list
+    return np.array(self.state)
 
   def render(self, mode='human'):
     screen_width = 600
@@ -327,7 +329,7 @@ def render_test(env):
   
   
   while True:
-    obs, scramble_actions = env.reset()
+    obs = env.reset()
     env.render(mode="human")
     time.sleep(1)
 
@@ -348,7 +350,7 @@ def render_test(env):
 def env_test(env):
   scramble_cnt = 2
   print("------Reset Environment to Orig------------" )
-  obs, scramble_actions = env.reset()
+  obs = env.reset()
   #obs_size = env.observation_space.shape[0]
   n_actions = env.action_space.n
   #obs_size = len(env.observation_space)
@@ -387,7 +389,7 @@ def env_test(env):
 
   #Reset env and bring it back to normal
   scramble_cnt = env.gods_no
-  obs, scramble_actions = env.reset(scramble_count=scramble_cnt)
+  obs = env.reset(scramble_count=scramble_cnt)
   print("\n --- RESET ENVIRONMENT ---- ")
   print("Actual Observation: ", obs)
   print("scramble_actions:   ", scramble_actions)
@@ -407,7 +409,7 @@ def random_agent(env):
 
   #random_actions = [0,4,8,15,3,1,7,12,1]
   random_actions = [0,4,8,3]
-  obs, scramble_actions = env.reset(scramble_list = random_actions)
+  obs = env.reset(scramble_list = random_actions)
   counter_actions_list = []
   for action in scramble_actions:
     counter_actions_list.append(env.cube.conj_action(action))  

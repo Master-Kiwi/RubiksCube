@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>1a830b3c-6aea-4f75-b20e-81a88195778d</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>src\main_env_test.py</StartupFile>
+    <StartupFile>src\main_torch_solver.py</StartupFile>
     <SearchPath>src</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -37,6 +37,7 @@
     <Compile Include="src\main_classic_solver.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="src\main_torch_solver.py" />
     <Compile Include="src\RubiksCube.py" />
     <Compile Include="src\tree_search.py" />
   </ItemGroup>
